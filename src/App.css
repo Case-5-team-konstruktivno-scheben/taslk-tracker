@@ -1,0 +1,144 @@
+/* Для всего документа */
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  font-family: 'Segoe UI', sans-serif;
+  background-color: #ffffff;
+  color: #111;
+}
+
+/* Обертка всего содержимого страницы */
+.page-wrapper {
+  min-height: 100vh;         /* Минимальная высота 100% экрана */
+  display: flex;
+  flex-direction: column;
+}
+
+/* Основной контент */
+.content {
+  flex: 1;                   /* Занимает всё доступное место */
+  background-color: white;   /* Белый фон */
+  padding: 20px;             /* Отступы по желанию */
+}
+
+/* Навигационная панель */
+.navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 60px;
+  background-color: #ffffff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+  font-weight: 500;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+}
+
+.nav-left, .nav-right {
+  display: flex;
+  gap: 25px;
+}
+
+.navbar a, .nav-left a, .nav-right a {
+  text-decoration: none;
+  color: #111;
+  font-size: 16x;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.navbar a:hover, .nav-left a:hover, .nav-right a:hover {
+  color: #FF7F50;
+}
+
+.nav-center {
+  font-size: 18px;
+  font-weight: 600;
+  cursor: pointer;
+  color: #ff8a3d;
+  user-select: none;
+}
+
+/* Обертка главного экрана */
+.homepage {
+  max-width: 475px;
+  margin: 60px auto 120px auto; /* сверху 60px, снизу 120px */
+  text-align: center;
+}
+
+/* Описание в сером блоке */
+.homepage p.lead {
+  background-color: #f3f3f3;
+  padding: 10px 50px;
+  border-radius: 8px;
+  color: #222;
+  font-size: 18px;
+  line-height: 1.5;
+  margin-bottom: 40px;
+}
+
+/* Кнопка Начать */
+.cta-button {
+  background-color: #ffd3b4;
+  color: #111;
+  border: none;
+  padding: 20px 100px;
+  font-size: 30px;
+  border-radius: 50px; /* более округлая */
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.cta-button:hover {
+  background-color: #ffbe98;
+}
+
+/* Подвал */
+.footer {
+  background-color: #222222; /* Темно-серый, близкий к черному */
+  padding: 40px 0;
+  color: #fff;
+}
+
+.footer-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  gap: 30px;
+  text-align: center;
+  flex-wrap: wrap;
+}
+
+.footer-left, .footer-center, .footer-right {
+  flex: 1;
+  min-width: 180px;
+}
+
+.footer-left p, .footer-center p, .footer-right p {
+  margin: 5px 0;
+}
+
+.social-icons a {
+  font-size: 28px;
+  margin: 0 10px;
+  color: #fff;
+  text-decoration: none;
+  transition: color 0.3s ease;
+}
+
+.social-icons a:hover {
+  color: #ffd3b4;
+}
+
+.footer-right a {
+  font-weight: 600;
+  color: #ffd3b4;
+  text-decoration: none;
+}
+
+.footer-right a:hover {
+  color: #e57832;
+}

@@ -1,0 +1,111 @@
+.react-datepicker {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  border: none;
+  border-radius: 12px;
+  box-shadow: 0 8px 16px rgba(0,0,0,0.15);
+  background-color: #ffffff;
+  padding: 10px;
+  width: 280px;
+}
+
+.react-datepicker__header {
+  background-color: #4a90e2;
+  border-top-left-radius: 12px;
+  border-top-right-radius: 12px;
+  padding: 12px 0;
+  color: #fff;
+  font-weight: 600;
+  text-align: center;
+  font-size: 1.1em;
+  user-select: none;
+}
+
+.react-datepicker__day-names {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: #555;
+}
+
+.react-datepicker__day {
+  width: 32px;
+  height: 32px;
+  line-height: 32px;
+  margin: 2px;
+  text-align: center;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.react-datepicker__day--today {
+  font-weight: 700;
+  color: #4a90e2;
+}
+
+.react-datepicker__day--selected,
+.react-datepicker__day--keyboard-selected {
+  background-color: #4a90e2;
+  color: #fff;
+}
+
+.react-datepicker__day:hover {
+  background-color: #d0e2ff;
+}
+
+.react-datepicker__day--disabled {
+  color: #ccc;
+  cursor: default;
+}
+
+.react-datepicker__navigation {
+  top: 14px;
+  line-height: 20px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: #fff;
+  font-size: 20px;
+  font-weight: bold;
+  user-select: none;
+  transition: color 0.3s ease;
+}
+
+.react-datepicker__navigation:hover {
+  color: #a0c4ff;
+}
+
+.react-datepicker__navigation--previous {
+  left: 10px;
+}
+
+.react-datepicker__navigation--next {
+  right: 10px;
+}
+
+.react-datepicker__time-container {
+  border-left: 1px solid #eee;
+  width: 80px;
+  background: #fafafa;
+  border-bottom-right-radius: 12px;
+  border-top-right-radius: 12px;
+}
+
+.react-datepicker__time-list-item {
+  font-size: 0.9em;
+  padding: 6px 10px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.react-datepicker__time-list-item--selected {
+  background-color: #4a90e2;
+  color: white;
+  font-weight: 700;
+}
+
+.react-datepicker__time-list-item:hover {
+  background-color: #d0e2ff;
+}

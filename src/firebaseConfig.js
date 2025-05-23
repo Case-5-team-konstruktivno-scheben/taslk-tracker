@@ -1,8 +1,9 @@
-// src/firebaseConfig.js
+// firebaseConfig.js
 import { initializeApp } from "firebase/app";
-import { getAuth, setPersistence, browserLocalPersistence } from "firebase/auth";
-import { getFirestore } from "firebase/firestore"; // Подключаем Firestore
+import { getAuth } from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
 
+// Ваш объект конфигурации Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyBHKIRfKv48RSG5Qf3-CKre4ffgzLw02gg",
   authDomain: "task-tracker-fb9f7.firebaseapp.com",
@@ -15,14 +16,8 @@ const firebaseConfig = {
 
 // Инициализация Firebase
 const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app); // Инициализация Firestore
 
-// Устанавливаем persistent сессию
-setPersistence(auth, browserLocalPersistence).catch((error) => {
-  console.error("Ошибка при установке сессии:", error.message);
-});
-
-export { auth, db }; // Экспортируем и auth, и db
-
+// Экспорт объектов аутентификации и базы данных для использования в других файлах
+export const auth = getAuth(app);
+export const db = getFirestore(app);
 

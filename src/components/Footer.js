@@ -1,96 +1,97 @@
-// src/components/Footer.js (чистый JS без JSX)
-// Footer.js
 import React from "react";
+import { FaTelegramPlane, FaVk, FaGithub } from "react-icons/fa";
 
-export default function Footer() {
+const Footer = () => {
+  // Стили, перенесенные из CSS
+  const footerStyle = {
+    display: "flex",
+    justifyContent: "space-around",
+    alignItems: "flex-start", // Выровнять секции по верхнему краю
+    backgroundColor: "#333",
+    color: "#fff",
+    padding: "2rem 1rem",
+    flexWrap: "wrap",
+    gap: "2rem",
+  };
+
+  const sectionStyle = {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    textAlign: "center",
+    gap: "0.5rem",
+  };
+
+  const headingStyle = {
+    marginTop: "0", // Убираем верхний отступ у заголовков
+    marginBottom: "0.5rem",
+  };
+
+  const linkStyle = {
+    color: "#dcdcdc",
+    textDecoration: "none",
+  };
+
+  const iconsStyle = {
+    display: "flex",
+    gap: "1rem",
+  };
+
+  const iconStyle = {
+    color: "white",
+  };
+
   return (
-    <footer className="footer">
-      {/* содержимое футера */}
+    <footer style={footerStyle}>
+      <div style={sectionStyle}>
+        <h4 style={headingStyle}>Связаться с нами:</h4>
+        <a
+          href="https://mail.google.com/mail/?view=cm&fs=1&to=konstruktivno.praktika@gmail.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={linkStyle}
+        >
+          konstruktivno.praktika@gmail.com
+        </a>
+      </div>
+
+      <div style={sectionStyle}>
+        <h4 style={headingStyle}>Мы в соцсетях:</h4>
+        <div style={iconsStyle}>
+          <a
+            href="https://t.me/your_tg"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={iconStyle}
+          >
+            <FaTelegramPlane size={24} />
+          </a>
+          <a
+            href="https://vk.com/your_vk"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={iconStyle}
+          >
+            <FaVk size={24} />
+          </a>
+          <a
+            href="https://github.com/your_github"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={iconStyle}
+          >
+            <FaGithub size={24} />
+          </a>
+        </div>
+      </div>
+
+      <div style={sectionStyle}>
+        <a href="/privacy" style={linkStyle}>Политика конфиденциальности</a>
+        <p>© 2025 Tusk</p>
+      </div>
     </footer>
   );
-}
+};
 
-export function createFooter() {
-  const footer = document.createElement('footer');
-  footer.className = 'footer';
+export default Footer;
 
-  const footerInner = document.createElement('div');
-  footerInner.className = 'footer-inner';
-
-  // Левая колонка
-  const footerLeft = document.createElement('div');
-  footerLeft.className = 'footer-left';
-
-  const leftTitle = document.createElement('p');
-  leftTitle.innerHTML = '<strong>Связаться с нами:</strong>';
-  const leftEmail = document.createElement('p');
-  leftEmail.textContent = 'konstruktivno.praktika@gmail.com';
-
-  footerLeft.appendChild(leftTitle);
-  footerLeft.appendChild(leftEmail);
-
-  // Центр
-  const footerCenter = document.createElement('div');
-  footerCenter.className = 'footer-center';
-
-  const centerTitle = document.createElement('p');
-  centerTitle.innerHTML = '<strong>Мы в соцсетях:</strong>';
-
-  const socialIcons = document.createElement('div');
-  socialIcons.className = 'social-icons';
-
-  const tgLink = document.createElement('a');
-  tgLink.href = 'https://t.me/tuskcherezdeazol';
-  tgLink.target = '_blank';
-  tgLink.rel = 'noreferrer';
-  tgLink.title = 'Telegram';
-  tgLink.textContent = '📨';
-
-  const vkLink = document.createElement('a');
-  vkLink.href = 'https://vk.com/ktiib';
-  vkLink.target = '_blank';
-  vkLink.rel = 'noreferrer';
-  vkLink.title = 'VK';
-  vkLink.textContent = '👥';
-
-  const gitLink = document.createElement('a');
-  gitLink.href = 'https://github.com/yourprofile';
-  gitLink.target = '_blank';
-  gitLink.rel = 'noreferrer';
-  gitLink.title = 'GitHub';
-  gitLink.textContent = '💻';
-
-  socialIcons.appendChild(tgLink);
-  socialIcons.appendChild(vkLink);
-  socialIcons.appendChild(gitLink);
-
-  footerCenter.appendChild(centerTitle);
-  footerCenter.appendChild(socialIcons);
-
-  // Правая колонка
-  const footerRight = document.createElement('div');
-  footerRight.className = 'footer-right';
-
-  const privacyLinkP = document.createElement('p');
-  const privacyLink = document.createElement('a');
-  privacyLink.href = 'privacy-policy.html';
-  privacyLink.target = '_blank';
-  privacyLink.rel = 'noreferrer';
-  privacyLink.textContent = 'Политика конфиденциальности';
-
-  privacyLinkP.appendChild(privacyLink);
-
-  const copyRightP = document.createElement('p');
-  copyRightP.textContent = '© 2025 Tusk';
-
-  footerRight.appendChild(privacyLinkP);
-  footerRight.appendChild(copyRightP);
-
-  // Собираем всё
-  footerInner.appendChild(footerLeft);
-  footerInner.appendChild(footerCenter);
-  footerInner.appendChild(footerRight);
-  footer.appendChild(footerInner);
-
-  return footer;
-}

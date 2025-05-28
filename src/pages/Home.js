@@ -1,6 +1,6 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { FiArrowRight } from "react-icons/fi"; // Добавляем иконку
+import { FiArrowRight } from "react-icons/fi"; 
 
 const Home = () => {
   const navigate = useNavigate();
@@ -88,7 +88,7 @@ const Home = () => {
                 WebkitTextFillColor: "transparent",
               }}
             >
-              Tusk
+              RunPlan
             </strong>{" "}
             — ваш персональный помощник в мире продуктивности. Создавайте задачи,
             устанавливайте приоритеты и отслеживайте прогресс с интуитивно
@@ -129,7 +129,7 @@ const Home = () => {
         </button>
       </div>
 
-      {/* Декоративные элементы фона */}
+      
       <div
         style={{
           position: "absolute",

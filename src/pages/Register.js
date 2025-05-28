@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { FiUserPlus, FiLoader } from "react-icons/fi";
-import { auth, db, joinTeamByCode } from "../firebaseConfig";  // добавлен import joinTeamByCode
+import { auth, db, joinTeamByCode } from "../firebaseConfig";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
 
@@ -10,8 +10,7 @@ const Register = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [joinCode, setJoinCode] = useState("");  // добавлено состояние для кода
-  const [role, setRole] = useState("user");
+  const [joinCode, setJoinCode] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -31,17 +30,15 @@ const Register = () => {
       await setDoc(doc(db, "users", user.uid), {
         fullName,
         email,
-        role: role.toLowerCase(),
+        role: "user", 
         createdAt: new Date(),
       });
 
-      // Если введён код команды или компании — присоединяем
       if (joinCode.trim()) {
         await joinTeamByCode(joinCode.trim(), user.uid);
       }
 
-      // После успешной регистрации перенаправляем на /admin
-      navigate("/admin", { replace: true });
+      navigate("/teams", { replace: true });
     } catch (error) {
       console.error(error);
       setError("Не удалось создать аккаунт или присоединиться по коду.");
@@ -58,40 +55,49 @@ const Register = () => {
       justifyContent: "center",
       minHeight: "100vh",
       background: "linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)",
-      padding: "1rem",
+      padding: "2rem",
       position: "relative",
       overflow: "hidden",
       fontFamily: "'Inter', sans-serif",
-      '@media (max-width: 480px)': {
-        padding: "0.5rem",
-      },
+    },
+    decorCircle: {
+      position: "absolute",
+      width: "600px",
+      height: "600px",
+      background:
+        "radial-gradient(circle, rgba(79, 70, 229, 0.08) 0%, transparent 70%)",
+      top: "-200px",
+      right: "-200px",
+      borderRadius: "50%",
+      pointerEvents: "none",
     },
     title: {
-      fontSize: "2.2rem",
+      fontSize: "3.5rem",
       fontWeight: 800,
-      color: "#0f172a",
-      marginBottom: "1.5rem",
+      marginBottom: "2rem",
       background: "linear-gradient(45deg, #4f46e5 30%, #6366f1 100%)",
       WebkitBackgroundClip: "text",
       WebkitTextFillColor: "transparent",
       textAlign: "center",
       letterSpacing: "-0.025em",
-      '@media (max-width: 480px)': {
-        fontSize: "1.8rem",
-        marginBottom: "1rem",
-      },
+      color: "#0f172a",
     },
     form: {
       backgroundColor: "rgba(255, 255, 255, 0.95)",
-      padding: "2rem",
+      padding: "2.5rem",
       borderRadius: "24px",
       boxShadow: "0 12px 32px rgba(15, 23, 42, 0.1)",
       border: "1px solid rgba(241, 245, 249, 0.8)",
       backdropFilter: "blur(8px)",
       width: "100%",
       maxWidth: "440px",
-      transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+      transition: "all 0.3s cubic-bezier(0.4,0,0.2,1)",
+      transform: "translateY(0)",
       margin: "0 auto",
+      ':hover': {
+        transform: "translateY(-4px)",
+        boxShadow: "0 16px 40px rgba(15,23,42,0.15)",
+      },
     },
     inputContainer: {
       marginBottom: "1rem",
@@ -103,28 +109,8 @@ const Register = () => {
       borderRadius: "12px",
       border: "2px solid #e2e8f0",
       transition: "all 0.2s ease",
-      backgroundColor: "rgba(255, 255, 255, 0.9)",
+      backgroundColor: "rgba(255,255,255,0.9)",
       outline: "none",
-      '@media (max-width: 480px)': {
-        padding: "0.7rem 1rem",
-      },
-      ':focus': {
-        borderColor: "#4f46e5",
-        boxShadow: "0 0 0 3px rgba(79, 70, 229, 0.1)",
-      },
-    },
-    select: {
-      width: "100%",
-      padding: "0.8rem 1.2rem",
-      fontSize: "0.95rem",
-      borderRadius: "12px",
-      border: "2px solid #e2e8f0",
-      backgroundColor: "rgba(255, 255, 255, 0.9)",
-      cursor: "pointer",
-      appearance: "none",
-      '@media (max-width: 480px)': {
-        padding: "0.7rem 1rem",
-      },
     },
     button: {
       width: "100%",
@@ -134,16 +120,19 @@ const Register = () => {
       background: "linear-gradient(45deg, #4f46e5 0%, #6366f1 100%)",
       color: "#fff",
       border: "none",
-      borderRadius: "12px",
-      cursor: "pointer",
+      borderRadius: "14px",
       display: "flex",
       alignItems: "center",
       justifyContent: "center",
       gap: "0.6rem",
-      transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+      boxShadow: "0 6px 16px rgba(79,70,229,0.2)",
+      transition: "all 0.3s cubic-bezier(0.4,0,0.2,1)",
       ':hover': {
         transform: "translateY(-2px)",
-        boxShadow: "0 8px 24px rgba(79, 70, 229, 0.3)",
+        boxShadow: "0 8px 24px rgba(79,70,229,0.3)",
+      },
+      ':active': {
+        transform: "translateY(0)",
       },
     },
     error: {
@@ -173,30 +162,24 @@ const Register = () => {
         textDecoration: "underline",
       },
     },
-    decorCircle: {
-      position: "absolute",
-      top: "-120px",
-      right: "-120px",
-      width: "300px",
-      height: "300px",
-      background: "radial-gradient(circle, rgba(79, 70, 229, 0.08) 0%, transparent 70%)",
-      pointerEvents: "none",
-    },
   };
 
   return (
     <div style={styles.container}>
       <div style={styles.decorCircle} />
-      <div style={{ 
-        ...styles.decorCircle, 
-        top: "auto", 
-        bottom: "-150px", 
-        left: "-120px", 
-        background: "radial-gradient(circle, rgba(99, 102, 241, 0.08) 0%, transparent 70%)" 
-      }} />
+      <div
+        style={{
+          ...styles.decorCircle,
+          top: "auto",
+          bottom: "-300px",
+          left: "-200px",
+          background:
+            "radial-gradient(circle, rgba(99, 102, 241, 0.08) 0%, transparent 70%)",
+        }}
+      />
 
       <h1 style={styles.title}>Регистрация</h1>
-      
+
       <form onSubmit={handleRegister} style={styles.form}>
         <div style={styles.inputContainer}>
           <input
@@ -258,18 +241,6 @@ const Register = () => {
           />
         </div>
 
-        <div style={styles.inputContainer}>
-          <select
-            value={role}
-            onChange={(e) => setRole(e.target.value)}
-            style={styles.select}
-            disabled={loading}
-          >
-            <option value="user">Обычный пользователь</option>
-            <option value="admin">Администратор</option>
-          </select>
-        </div>
-
         {error && <div style={styles.error}>{error}</div>}
 
         <button
@@ -306,3 +277,4 @@ const Register = () => {
 };
 
 export default Register;
+

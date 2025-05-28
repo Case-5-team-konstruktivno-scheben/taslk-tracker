@@ -1,4 +1,4 @@
-// src/App.js
+
 
 import React, { useState, useEffect } from "react";
 import {
@@ -16,6 +16,7 @@ import Teams from "./pages/Teams";
 import TeamPage from "./pages/TeamPage/TeamPage";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import RedirectToTeam from "./pages/RedirectToTeam";
+import Home from "./pages/Home";
 
 import { auth, db } from "./firebaseConfig";
 import { doc, getDoc } from "firebase/firestore";
@@ -26,7 +27,6 @@ function AppContent() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Подгружаем и кэшируем роль пользователя
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
       if (user) {
         const docRef = doc(db, "users", user.uid);
@@ -56,16 +56,20 @@ function AppContent() {
       <Navbar />
       <main style={{ flex: 1 }}>
         <Routes>
-          {/* Корневой маршрут: всегда используем RedirectToTeam, он сам решит, куда идти */}
-          <Route path="/" element={<RedirectToTeam />} />
+          
+          <Route path="/" element={<Home />} />
 
-          {/* Аутентификация */}
+          <Route
+            path="/redirect"
+            element={<RedirectToTeam />}
+          />
+
           <Route
             path="/login"
             element={
               !currentUser
                 ? <Login />
-                : <Navigate to="/" replace />
+                : <Navigate to="/redirect" replace />
             }
           />
           <Route
@@ -73,11 +77,10 @@ function AppContent() {
             element={
               !currentUser
                 ? <Register />
-                : <Navigate to="/" replace />
+                : <Navigate to="/redirect" replace />
             }
           />
 
-          {/* Список команд */}
           <Route
             path="/teams"
             element={
@@ -87,7 +90,6 @@ function AppContent() {
             }
           />
 
-          {/* Страница конкретной команды */}
           <Route
             path="/team/:teamId"
             element={
@@ -97,10 +99,8 @@ function AppContent() {
             }
           />
 
-          {/* Прочие */}
           <Route path="/privacy" element={<PrivacyPolicy />} />
 
-          {/* Любые другие пути → на корень */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>

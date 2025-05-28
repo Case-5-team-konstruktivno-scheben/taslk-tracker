@@ -1,3 +1,5 @@
+// src/pages/TeamPage/TeamTasks.js
+
 import React, { useState, useEffect, useRef } from 'react';
 import {
   Form,
@@ -26,6 +28,7 @@ import {
   getDoc
 } from 'firebase/firestore';
 import { db } from '../../firebaseConfig';
+import teamPermissions from '../../config/teamPermissions';
 import DatePicker from 'react-datepicker';
 import {
   FiList,
@@ -37,16 +40,14 @@ import {
   FiRotateCcw,
   FiTrash,
   FiEdit,
-  FiClock
+  FiClock,
+  FiUser,
+  FiAward,
+  FiInfo
 } from 'react-icons/fi';
 import 'react-datepicker/dist/react-datepicker.css';
 
 const statusOrder = { closed: 0, open: 1, completed: 2 };
-const statusVariant = {
-  closed: 'secondary',
-  open: 'info',
-  completed: 'success'
-};
 
 const TeamTasks = ({ teamId, currentUser, role }) => {
   const [tasks, setTasks] = useState([]);
@@ -54,34 +55,36 @@ const TeamTasks = ({ teamId, currentUser, role }) => {
   const [members, setMembers] = useState([]);
   const [tasksList, setTasksList] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [settings, setSettings] = useState({});
 
-  // Поля создания задачи
+  const canManage = teamPermissions[teamId]?.[role]?.canManageTasks ?? true;
+  const canDelete = teamPermissions[teamId]?.[role]?.canDelete ?? true;
+
+  // new-task form state
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [assignedTo, setAssignedTo] = useState('');
   const [dueDate, setDueDate] = useState(null);
   const [priority, setPriority] = useState(false);
-
-  // Уведомления
   const [notificationType, setNotificationType] = useState('none');
   const [notificationTime, setNotificationTime] = useState(null);
   const [notificationInterval, setNotificationInterval] = useState('daily');
-
-  // Зависимости
   const [dependencies, setDependencies] = useState([]);
 
-  // Поиск / Фильтр / Сортировка
+  // filters & sort
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [filterUser, setFilterUser] = useState('all');
   const [sortBy, setSortBy] = useState('deadline');
 
-  // Модалка редактирования
+  // edit modal
   const [showEdit, setShowEdit] = useState(false);
   const [editTask, setEditTask] = useState(null);
 
-  // Реф для автозаполняемой textarea описания
+  // desc modal
+  const [showDescModal, setShowDescModal] = useState(false);
+  const [selectedTaskDesc, setSelectedTaskDesc] = useState(null);
+
   const descRef = useRef(null);
   const adjustTextarea = () => {
     if (descRef.current) {
@@ -90,17 +93,9 @@ const TeamTasks = ({ teamId, currentUser, role }) => {
     }
   };
 
-  // Обновление уровня пользователя
-  const updateUserLevel = async (userId, points) => {
-    const level = points >= 100 ? 'Expert' : points >= 50 ? 'Intermediate' : 'Novice';
-    const userRef = doc(db, 'users', userId);
-    await updateDoc(userRef, { level });
-    alert(`Ваш новый уровень: ${level}`);
-  };
-
-  // Загрузка данных из Firestore
   useEffect(() => {
     const tasksQ = query(collection(db, 'tasks'), where('teamId', '==', teamId));
+
     const unsubTasks = onSnapshot(tasksQ, snap => {
       const arr = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       arr.sort((a, b) => statusOrder[a.status] - statusOrder[b.status]);
@@ -108,18 +103,19 @@ const TeamTasks = ({ teamId, currentUser, role }) => {
       setLoading(false);
     });
 
-    const depsQ = query(collection(db, 'tasks'), where('teamId', '==', teamId));
-    const unsubDeps = onSnapshot(depsQ, snap => {
+    const unsubTasksList = onSnapshot(tasksQ, snap => {
       setTasksList(snap.docs.map(d => ({ id: d.id, ...d.data() })));
     });
 
     const teamRef = doc(db, 'teams', teamId);
     const unsubTeam = onSnapshot(teamRef, async snap => {
       const data = snap.data() || {};
-      setSettings(data.settings || {});
       const memberIds = (data.members || []).map(m => m.userId);
       if (memberIds.length) {
-        const usersQ = query(collection(db, 'users'), where('__name__', 'in', memberIds));
+        const usersQ = query(
+          collection(db, 'users'),
+          where('__name__', 'in', memberIds)
+        );
         const usersSnap = await getDocs(usersQ);
         setMembers(usersSnap.docs.map(d => ({ id: d.id, ...d.data() })));
       }
@@ -132,32 +128,28 @@ const TeamTasks = ({ teamId, currentUser, role }) => {
 
     return () => {
       unsubTasks();
-      unsubDeps();
+      unsubTasksList();
       unsubTeam();
       unsubCats();
     };
   }, [teamId]);
 
-  // Добавление задачи
   const handleAddTask = async e => {
     e.preventDefault();
     if (!title.trim()) return alert('Введите название задачи');
 
     const selCat = categories.find(c => c.id === categoryId);
-    const isAll = assignedTo === 'all' || !assignedTo;
     const selUser = members.find(u => u.id === assignedTo);
-    const assignedToName = isAll
-      ? 'Вся команда'
-      : selUser?.fullName || selUser?.displayName || '';
-    const assignedToEmail = isAll ? '' : selUser?.email || '';
+    const assignedToName = assignedTo ? selUser.fullName : 'Вся команда';
+    const assignedToEmail = assignedTo ? selUser.email : '';
 
     await addDoc(collection(db, 'tasks'), {
       teamId,
       title: title.trim(),
       description: description.trim(),
-      categoryId: categoryId || null,
+      categoryId: selCat?.id || null,
       categoryName: selCat?.name || null,
-      assignedTo: isAll ? null : assignedTo,
+      assignedTo: assignedTo || null,
       assignedToName,
       assignedToEmail,
       dueDate: dueDate ? dueDate.toISOString() : null,
@@ -170,7 +162,7 @@ const TeamTasks = ({ teamId, currentUser, role }) => {
       createdByName: currentUser.displayName || currentUser.email,
       createdByEmail: currentUser.email,
       createdAt: serverTimestamp(),
-      dependencies,
+      dependencies
     });
 
     setTitle('');
@@ -185,14 +177,11 @@ const TeamTasks = ({ teamId, currentUser, role }) => {
     setDependencies([]);
   };
 
-  // Изменение зависимостей
-  const handleDependencyChange = (e, id) => {
+  const handleDependencyChange = (e, id) =>
     setDependencies(prev =>
       e.target.checked ? [...prev, id] : prev.filter(x => x !== id)
     );
-  };
 
-  // Открыть модалку редактирования
   const openEditModal = task => {
     setEditTask({
       ...task,
@@ -202,23 +191,25 @@ const TeamTasks = ({ teamId, currentUser, role }) => {
     setShowEdit(true);
   };
 
-  // Сохранить изменения в задаче
+  const openDescriptionModal = task => {
+    setSelectedTaskDesc(task);
+    setShowDescModal(true);
+  };
+
   const handleSaveEdit = async () => {
     if (!editTask.title.trim()) return alert('Название не может быть пустым');
+
     const selCat = categories.find(c => c.id === editTask.categoryId);
-    const isAll = editTask.assignedTo === 'all' || !editTask.assignedTo;
     const selUser = members.find(u => u.id === editTask.assignedTo);
-    const assignedToName = isAll
-      ? 'Вся команда'
-      : selUser?.fullName || selUser?.displayName || '';
-    const assignedToEmail = isAll ? '' : selUser?.email || '';
+    const assignedToName = editTask.assignedTo ? selUser.fullName : 'Вся команда';
+    const assignedToEmail = editTask.assignedTo ? selUser.email : '';
 
     await updateDoc(doc(db, 'tasks', editTask.id), {
       title: editTask.title.trim(),
       description: editTask.description.trim(),
-      categoryId: editTask.categoryId || null,
+      categoryId: selCat?.id || null,
       categoryName: selCat?.name || null,
-      assignedTo: isAll ? null : editTask.assignedTo,
+      assignedTo: editTask.assignedTo || null,
       assignedToName,
       assignedToEmail,
       dueDate: editTask.dueDate ? editTask.dueDate.toISOString() : null,
@@ -226,60 +217,42 @@ const TeamTasks = ({ teamId, currentUser, role }) => {
       notificationType: editTask.notificationType,
       notificationTime: editTask.notificationTime,
       notificationInterval: editTask.notificationInterval,
-      dependencies: editTask.dependencies,
+      dependencies: editTask.dependencies
     });
 
     setShowEdit(false);
   };
 
-  // Смена статуса задачи
   const handleToggleStatus = async task => {
-    if (!task?.status) return;
-    const next =
+    const nextStatus =
       task.status === 'closed'
         ? 'open'
         : task.status === 'open'
         ? 'completed'
         : 'closed';
+
     if (task.dependencies?.length) {
-      const allDeps = await Promise.all(
+      const ok = await Promise.all(
         task.dependencies.map(async id => {
           const snap = await getDoc(doc(db, 'tasks', id));
           return snap.data()?.status === 'completed';
         })
       );
-      if (!allDeps.every(Boolean)) {
-        return alert('Не все зависимости выполнены.');
-      }
+      if (!ok.every(Boolean)) return alert('Не все зависимости выполнены');
     }
-    await updateDoc(doc(db, 'tasks', task.id), { status: next });
-    if (next === 'completed') {
-      handleTaskCompletion(task.id, task.assignedTo);
-    }
+
+    await updateDoc(doc(db, 'tasks', task.id), { status: nextStatus });
   };
 
-  // Удаление задачи
   const handleDelete = async id => {
     if (window.confirm('Удалить задачу?')) {
       await deleteDoc(doc(db, 'tasks', id));
     }
   };
 
-  // Начисление очков за выполнение
-  const handleTaskCompletion = async (taskId, userId) => {
-    const snap = await getDoc(doc(db, 'tasks', taskId));
-    const data = snap.data() || {};
-    const points = data.priority ? 20 : 10;
-    const userSnap = await getDoc(doc(db, 'users', userId));
-    const newPoints = (userSnap.data()?.points || 0) + points;
-    await updateDoc(doc(db, 'users', userId), { points: newPoints });
-    await updateUserLevel(userId, newPoints);
-    alert(`Вы получили ${points} очков за задачу "${data.title}"!`);
-  };
-
   if (loading) {
     return (
-      <div className="d-flex justify-content-center align-items-center" style={{ height: '30vh' }}>
+      <div style={styles.loadingContainer}>
         <Spinner animation="border" />
       </div>
     );
@@ -288,390 +261,420 @@ const TeamTasks = ({ teamId, currentUser, role }) => {
   const today = new Date().toISOString().slice(0, 10);
 
   return (
-    <Card className="shadow-sm rounded-2">
-      <Card.Header className="bg-white border-0 d-flex align-items-center justify-content-between">
-        <div className="d-flex align-items-center">
-          <FiList className="me-2 text-primary" size={20} />
-          <h5 className="mb-0">Задачи команды</h5>
-        </div>
-      </Card.Header>
-      <Card.Body>
-        {/* Панель создания задачи */}
-        <Accordion defaultActiveKey="0" className="mb-4">
-          <Accordion.Item eventKey="0">
-            <Accordion.Header>
-              <div className="d-flex align-items-center">
-                <FiPlus className="me-2 text-success" />
-                <span>Создать новую задачу</span>
-              </div>
-            </Accordion.Header>
-            <Accordion.Body>
-              <Form onSubmit={handleAddTask}>
-                {/* Верхний ряд: Название, Категория, Исполнитель, Дедлайн, Важность */}
-                <Row className="gx-2 gy-2 align-items-center">
-                  <Col md={3}>
-                    <InputGroup>
-                      <InputGroup.Text><FiEdit /></InputGroup.Text>
-                      <Form.Control
-                        placeholder="Название"
-                        value={title}
-                        onChange={e => setTitle(e.target.value)}
-                      />
-                    </InputGroup>
-                  </Col>
-                  <Col md={2}>
-                    <InputGroup>
-                      <InputGroup.Text><FiFlag /></InputGroup.Text>
-                      <Form.Select
-                        value={categoryId}
-                        onChange={e => setCategoryId(e.target.value)}
-                      >
-                        <option value="">Категория</option>
-                        {categories.map(cat => (
-                          <option key={cat.id} value={cat.id}>{cat.name}</option>
-                        ))}
-                      </Form.Select>
-                    </InputGroup>
-                  </Col>
-                  <Col md={3}>
-                    <Form.Select
-                      value={assignedTo}
-                      onChange={e => setAssignedTo(e.target.value)}
-                    >
-                      <option value="all">Вся команда</option>
-                      {members.map(u => (
-                        <option key={u.id} value={u.id}>
-                          {u.fullName || u.displayName} ({u.email})
-                        </option>
-                      ))}
-                    </Form.Select>
-                  </Col>
-                  <Col md={2}>
-                    <InputGroup className="w-100">
-                      <InputGroup.Text><FiCalendar /></InputGroup.Text>
+    <div style={styles.container}>
+      <div style={styles.decorCircleTop} />
+      <div style={styles.decorCircleBottom} />
+
+      <Card style={styles.glassCard}>
+        <Card.Header style={styles.cardHeader}>
+          <FiList style={styles.iconPrimary} size={20} />
+          <h5 style={styles.heading}>Задачи команды</h5>
+        </Card.Header>
+        <Card.Body style={styles.cardBody}>
+          {/* New Task Accordion */}
+          <Accordion defaultActiveKey="0" style={styles.accordion}>
+            <Accordion.Item eventKey="0" style={styles.accordionItem}>
+              <Accordion.Header style={styles.accordionHeader}>
+                <FiPlus style={styles.iconSuccess} />
+                <span style={styles.accordionTitle}>Создать новую задачу</span>
+              </Accordion.Header>
+              <Accordion.Body style={styles.accordionBody}>
+                <Form onSubmit={handleAddTask}>
+                  <Row className="gx-3 gy-3" style={styles.row}>
+                    <Col md={3}>
+                      <InputGroup>
+                        <InputGroup.Text style={styles.inputIcon}>
+                          <FiEdit />
+                        </InputGroup.Text>
+                        <Form.Control
+                          placeholder="Название"
+                          value={title}
+                          onChange={e => setTitle(e.target.value)}
+                          style={styles.input}
+                        />
+                      </InputGroup>
+                    </Col>
+                    <Col md={2}>
+                      <InputGroup>
+                        <InputGroup.Text style={styles.inputIcon}>
+                          <FiFlag />
+                        </InputGroup.Text>
+                        <Form.Select
+                          value={categoryId}
+                          onChange={e => setCategoryId(e.target.value)}
+                          style={styles.input}
+                        >
+                          <option value="">Категория</option>
+                          {categories.map(cat => (
+                            <option key={cat.id} value={cat.id}>
+                              {cat.name}
+                            </option>
+                          ))}
+                        </Form.Select>
+                      </InputGroup>
+                    </Col>
+                    <Col md={3}>
+                      <InputGroup>
+                        <InputGroup.Text style={styles.inputIcon}>
+                          <FiUser />
+                        </InputGroup.Text>
+                        <Form.Select
+                          value={assignedTo}
+                          onChange={e => setAssignedTo(e.target.value)}
+                          style={styles.input}
+                        >
+                          <option value="">Вся команда</option>
+                          {members.map(u => (
+                            <option key={u.id} value={u.id}>
+                              {u.fullName || u.email}
+                            </option>
+                          ))}
+                        </Form.Select>
+                      </InputGroup>
+                    </Col>
+                    <Col md={2}>
                       <DatePicker
                         selected={dueDate}
                         onChange={setDueDate}
-                        placeholderText="Дедлайн"
-                        className="form-control"
                         dateFormat="yyyy-MM-dd"
+                        placeholderText="Дедлайн"
+                        customInput={
+                          <Form.Control
+                            readOnly
+                            placeholder="Дедлайн"
+                            value={dueDate ? dueDate.toISOString().slice(0, 10) : ''}
+                            style={styles.dateInput}
+                          />
+                        }
                       />
-                    </InputGroup>
-                  </Col>
-                  <Col md={2} className="d-flex align-items-center">
-                    <Form.Check
-                      type="checkbox"
-                      label="Важное"
-                      checked={priority}
-                      onChange={e => setPriority(e.target.checked)}
+                    </Col>
+                    <Col md={2} style={styles.colCenter}>
+                      <Form.Check
+                        type="checkbox"
+                        label="Важное"
+                        checked={priority}
+                        onChange={e => setPriority(e.target.checked)}
+                      />
+                    </Col>
+                  </Row>
+                  <Form.Group style={styles.formGroup}>
+                    <Form.Control
+                      as="textarea"
+                      placeholder="Описание"
+                      value={description}
+                      onChange={e => {
+                        setDescription(e.target.value);
+                        adjustTextarea();
+                      }}
+                      ref={descRef}
+                      rows={1}
+                      style={styles.textarea}
                     />
-                  </Col>
-                </Row>
-
-                {/* Описание */}
-                <Form.Group className="mt-3">
-                  <Form.Control
-                    as="textarea"
-                    placeholder="Описание"
-                    value={description}
-                    onChange={e => {
-                      setDescription(e.target.value);
-                      adjustTextarea();
-                    }}
-                    ref={descRef}
-                    style={{ overflow: 'hidden' }}
-                    rows={1}
-                  />
-                </Form.Group>
-
-                {/* Кнопка «Добавить» и блок уведомлений/зависимостей */}
-                <Row className="mt-3 gx-2 gy-2 align-items-start">
-                  <Col md={3}>
-                    <Button
-                      type="submit"
-                      variant="success"
-                      className="w-100 d-flex align-items-center justify-content-center"
-                    >
-                      <FiPlus className="me-1" /> Добавить задачу
+                  </Form.Group>
+                  <div style={styles.addRow}>
+                    <Button type="submit" style={styles.successButton}>
+                      <FiPlus /> Добавить
                     </Button>
-                  </Col>
-                  <Col md={9}>
-                    <Accordion defaultActiveKey="1">
-                      <Accordion.Item eventKey="1">
-                        <Accordion.Header className="py-1 px-2 small">
-                          Уведомления и зависимости
+                    <Accordion defaultActiveKey="1" style={styles.innerAccordion}>
+                      <Accordion.Item eventKey="1" style={styles.accordionItem}>
+                        <Accordion.Header style={styles.accordionHeaderSmall}>
+                          <FiClock /> Уведомления и зависимости
                         </Accordion.Header>
-                        <Accordion.Body>
-                          <Row className="gx-2 gy-2">
-                            <Col md={4}>
-                              <Form.Group>
-                                <Form.Label className="small mb-1">Тип уведомления</Form.Label>
-                                <Form.Select
-                                  size="sm"
-                                  className="form-select-sm"
-                                  value={notificationType}
-                                  onChange={e => setNotificationType(e.target.value)}
-                                >
-                                  <option value="none">Нет</option>
-                                  <option value="interval">По интервалу</option>
-                                  <option value="specificTime">Время</option>
-                                </Form.Select>
-                              </Form.Group>
+                        <Accordion.Body style={styles.accordionBodySmall}>
+                          <Row className="gx-3 gy-3">
+                            <Col md={12}>
+                              <Form.Select
+                                value={notificationType}
+                                onChange={e => setNotificationType(e.target.value)}
+                                style={styles.input}
+                              >
+                                <option value="none">Нет</option>
+                                <option value="interval">По интервалу</option>
+                                <option value="specificTime">Время</option>
+                              </Form.Select>
                             </Col>
                             {notificationType === 'interval' && (
-                              <Col md={4}>
-                                <Form.Group>
-                                  <Form.Label className="small mb-1">Интервал</Form.Label>
-                                  <Form.Select
-                                    size="sm"
-                                    className="form-select-sm"
-                                    value={notificationInterval}
-                                    onChange={e => setNotificationInterval(e.target.value)}
-                                  >
-                                    <option value="daily">Ежедневно</option>
-                                    <option value="weekly">Еженедельно</option>
-                                    <option value="monthly">Ежемесячно</option>
-                                  </Form.Select>
-                                </Form.Group>
+                              <Col md={12}>
+                                <Form.Select
+                                  value={notificationInterval}
+                                  onChange={e => setNotificationInterval(e.target.value)}
+                                  style={styles.input}
+                                >
+                                  <option value="daily">Ежедневно</option>
+                                  <option value="weekly">Еженедельно</option>
+                                  <option value="monthly">Ежемесячно</option>
+                                </Form.Select>
                               </Col>
                             )}
                             {notificationType === 'specificTime' && (
-                              <Col md={4}>
-                                <Form.Group>
-                                  <Form.Label className="small mb-1">Время</Form.Label>
-                                  <InputGroup size="sm">
-                                    <Form.Control
-                                      type="datetime-local"
-                                      value={notificationTime}
-                                      onChange={e => setNotificationTime(e.target.value)}
-                                      className="form-control-sm"
-                                    />
-                                    <InputGroup.Text className="py-1"><FiClock /></InputGroup.Text>
-                                  </InputGroup>
-                                </Form.Group>
+                              <Col md={12}>
+                                <InputGroup>
+                                  <Form.Control
+                                    type="datetime-local"
+                                    value={notificationTime}
+                                    onChange={e => setNotificationTime(e.target.value)}
+                                    style={styles.input}
+                                  />
+                                  <InputGroup.Text style={styles.inputIcon}>
+                                    <FiClock />
+                                  </InputGroup.Text>
+                                </InputGroup>
                               </Col>
                             )}
                             <Col md={12}>
-                              <Form.Group>
-                                <Form.Label className="small mb-1">Зависимости</Form.Label>
-                                <Dropdown>
-                                  <Dropdown.Toggle
-                                    variant="outline-secondary"
-                                    id="dropdown-dependencies"
-                                    className="w-100 small py-1"
-                                    size="sm"
-                                  >
-                                    {dependencies.length
-                                      ? `Зависимости (${dependencies.length})`
-                                      : 'Выбрать зависимости'}
-                                  </Dropdown.Toggle>
-                                  <Dropdown.Menu
-                                    style={{
-                                      maxHeight: '200px',
-                                      overflowY: 'auto',
-                                      width: '100%'
-                                    }}
-                                  >
-                                    {tasksList.map(task => (
-                                      <Dropdown.Item
-                                        key={task.id}
-                                        as="div"
-                                        className="d-flex align-items-center py-1 small"
-                                      >
-                                        <Form.Check
-                                          type="checkbox"
-                                          checked={dependencies.includes(task.id)}
-                                          onChange={e => handleDependencyChange(e, task.id)}
-                                          label={task.title}
-                                          className="mb-0 small"
-                                        />
-                                      </Dropdown.Item>
-                                    ))}
-                                  </Dropdown.Menu>
-                                </Dropdown>
-                              </Form.Group>
+                              <Dropdown>
+                                <Dropdown.Toggle style={styles.outlineButtonSmall}>
+                                  {dependencies.length
+                                    ? `Зависимости (${dependencies.length})`
+                                    : 'Выбрать зависимости'}
+                                </Dropdown.Toggle>
+                                <Dropdown.Menu style={styles.dropdownMenu}>
+                                  {tasksList.map(t => (
+                                    <Dropdown.Item
+                                      key={t.id}
+                                      as="div"
+                                      style={styles.dropdownItem}
+                                    >
+                                      <Form.Check
+                                        type="checkbox"
+                                        checked={dependencies.includes(t.id)}
+                                        onChange={e =>
+                                          handleDependencyChange(e, t.id)
+                                        }
+                                        label={t.title}
+                                        style={styles.checkbox}
+                                      />
+                                    </Dropdown.Item>
+                                  ))}
+                                </Dropdown.Menu>
+                              </Dropdown>
                             </Col>
                           </Row>
                         </Accordion.Body>
                       </Accordion.Item>
                     </Accordion>
-                  </Col>
-                </Row>
-              </Form>
-            </Accordion.Body>
-          </Accordion.Item>
-        </Accordion>
+                  </div>
+                </Form>
+              </Accordion.Body>
+            </Accordion.Item>
+          </Accordion>
 
-        {/* Поиск и фильтрация */}
-        <Row className="gx-2 gy-2 mb-4">
-          <Col md={3}>
-            <Form.Control
-              placeholder="Поиск по задачам"
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-            />
-          </Col>
-          <Col md={3}>
-            <Form.Select
-              value={filterStatus}
-              onChange={e => setFilterStatus(e.target.value)}
-            >
-              <option value="all">Все</option>
-              <option value="closed">Закрытые</option>
-              <option value="open">Открытые</option>
-              <option value="completed">Завершенные</option>
-            </Form.Select>
-          </Col>
-          <Col md={3}>
-            <Form.Select value={sortBy} onChange={e => setSortBy(e.target.value)}>
-              <option value="deadline">По дедлайну</option>
-              <option value="createdAt">По дате создания</option>
-            </Form.Select>
-          </Col>
-        </Row>
+          {/* Filters */}
+          <Row className="gx-3 gy-3" style={styles.row}>
+            <Col md={2}>
+              <Form.Control
+                placeholder="Поиск по задачам"
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                style={styles.input}
+              />
+            </Col>
+            <Col md={2}>
+              <Form.Select
+                value={filterStatus}
+                onChange={e => setFilterStatus(e.target.value)}
+                style={styles.input}
+              >
+                <option value="all">Все</option>
+                <option value="closed">Закрытые</option>
+                <option value="open">Открытые</option>
+                <option value="completed">Завершенные</option>
+              </Form.Select>
+            </Col>
+            <Col md={2}>
+              <Form.Select
+                value={filterUser}
+                onChange={e => setFilterUser(e.target.value)}
+                style={styles.input}
+              >
+                <option value="all">Все пользователи</option>
+                <option value="team">Вся команда</option>
+                {members.map(u => (
+                  <option key={u.id} value={u.id}>
+                    {u.fullName || u.email}
+                  </option>
+                ))}
+              </Form.Select>
+            </Col>
+            <Col md={2}>
+              <Form.Select
+                value={sortBy}
+                onChange={e => setSortBy(e.target.value)}
+                style={styles.input}
+              >
+                <option value="deadline">По дедлайну</option>
+                <option value="createdAt">По дате создания</option>
+              </Form.Select>
+            </Col>
+          </Row>
 
-        {/* Список задач */}
-        <div className="d-flex flex-column gap-3">
-          {tasks
-            .filter(task => {
-              const matchesStatus =
-                filterStatus === 'all' || task.status === filterStatus;
-              const text = `${task.title} ${task.description}`.toLowerCase();
-              return matchesStatus && text.includes(searchTerm.toLowerCase());
-            })
-            .sort((a, b) =>
-              sortBy === 'deadline'
-                ? new Date(a.dueDate) - new Date(b.dueDate)
-                : a.createdAt.toDate() - b.createdAt.toDate()
-            )
-            .map(task => {
-              const dateStr = task.dueDate?.slice(0, 10) || '';
-              const createdAtStr =
-                task.createdAt?.toDate().toLocaleString() || '';
-              const overdue = dateStr < today && task.status !== 'completed';
-              const dueToday = dateStr === today;
-              const authorInfo = members.find(u => u.id === task.createdBy) || {};
-              const displayAuthor = `${authorInfo.fullName || task.createdByName} (${
-                authorInfo.email || task.createdByEmail
-              })`;
-              const isAll = task.assignedTo === null || task.assignedTo === 'all';
-              const assigneeInfo = !isAll
-                ? members.find(u => u.id === task.assignedTo) || {}
-                : null;
-              const displayAssignee = isAll
-                ? 'Вся команда'
-                : `${assigneeInfo.fullName || task.assignedToName} (${
-                    assigneeInfo.email || task.assignedToEmail
-                  })`;
+          {/* Task List */}
+          <div style={styles.taskList}>
+            {tasks
+              .filter(task => {
+                const okStatus = filterStatus === 'all' || task.status === filterStatus;
+                const txt = `${task.title} ${task.description}`.toLowerCase();
+                const okSearch = txt.includes(searchTerm.toLowerCase());
 
-              return (
-                <Card
-                  key={task.id}
-                  className="shadow-sm rounded-2 border-0"
-                  style={{
-                    backgroundColor: overdue
-                      ? 'rgba(220, 53, 69, 0.1)'
-                      : dueToday
-                      ? 'rgba(255, 193, 7, 0.1)'
-                      : 'transparent',
-                    color: overdue ? '#dc3545' : dueToday ? '#856404' : undefined
-                  }}
-                >
-                  <Card.Body className="d-flex justify-content-between align-items-center">
-                    <div>
-                      <h6 className="mb-1">{task.title}</h6>
-                      <p className="mb-1 text-muted small">
-                        {task.description || '—'}
-                      </p>
-                      <p className="mb-1 text-muted small">
-                        Создано: {createdAtStr} | Автор: {displayAuthor}
-                      </p>
-                      <p className="mb-1 text-muted small">
-                        Исполнитель: {displayAssignee}
-                      </p>
-                      <div className="d-flex align-items-center flex-wrap">
+                let okUser = true;
+                if (filterUser === 'team') {
+                  okUser = !task.assignedTo;
+                } else if (filterUser !== 'all') {
+                  okUser = task.assignedTo === filterUser;
+                }
+
+                return okStatus && okSearch && okUser;
+              })
+              .sort((a, b) =>
+                sortBy === 'deadline'
+                  ? new Date(a.dueDate || '') - new Date(b.dueDate || '')
+                  : a.createdAt.toDate() - b.createdAt.toDate()
+              )
+              .map(task => {
+                const dateStr = task.dueDate?.slice(0, 10) || '';
+                const overdue = dateStr < today && task.status !== 'completed';
+                const dueToday = dateStr === today;
+                const author =
+                  members.find(u => u.id === task.createdBy) || {};
+
+                return (
+                  <Card
+                    key={task.id}
+                    style={{
+                      ...styles.taskCard,
+                      backgroundColor: overdue
+                        ? 'rgba(220,53,69,0.05)'
+                        : dueToday
+                        ? 'rgba(255,193,7,0.05)'
+                        : 'transparent',
+                      borderLeft: overdue
+                        ? '4px solid #dc3545'
+                        : dueToday
+                        ? '4px solid #ffc107'
+                        : '4px solid #f8f9fa'
+                    }}
+                  >
+                    <Card.Body style={styles.taskCardBody}>
+                      <div style={styles.taskHeader}>
+                        <h6 style={styles.taskTitle}>{task.title}</h6>
+                      </div>
+                      <div style={styles.metaRow}>
+                        <Badge style={styles.statusBadge(task.status)}>
+                          {task.status === 'closed' && <FiPlay />}
+                          {task.status === 'open' && <FiCheckSquare />}
+                          {task.status === 'completed' && <FiRotateCcw />}
+                          {' '}{task.status}
+                        </Badge>
                         {task.categoryName && (
-                          <Badge bg="light" text="dark" className="me-2">
-                            {task.categoryName}
+                          <Badge style={styles.categoryBadge}>
+                            <FiFlag /> {task.categoryName}
                           </Badge>
                         )}
-                        <Badge bg="light" text="dark" className="me-2">
-                          <FiCalendar className="me-1" /> {dateStr || '—'}
-                        </Badge>
                         {task.priority && (
-                          <Badge bg="danger" className="me-2">
-                            <FiFlag className="me-1" /> Важное
+                          <Badge style={styles.dangerBadge}>
+                            <FiFlag /> Важное
                           </Badge>
                         )}
                         <Badge
-                          bg={statusVariant[task.status]}
-                          className="text-capitalize"
+                          style={
+                            overdue
+                              ? styles.dangerBadge
+                              : dueToday
+                              ? styles.warningBadge
+                              : styles.lightBadge
+                          }
                         >
-                          {task.status}
+                          <FiCalendar /> {dateStr || '—'}
                         </Badge>
                       </div>
-                    </div>
-                    <div className="d-flex align-items-center">
+                      <div style={styles.infoRow}>
+                        <span style={styles.infoItem}>
+                          <FiUser /> {task.assignedToName}
+                        </span>
+                        <span style={styles.infoItem}>
+                          <FiAward /> {author.fullName || task.createdByName}
+                        </span>
+                      </div>
+                    </Card.Body>
+                    <Card.Footer style={styles.cardFooter}>
                       <Button
-                        variant="outline-primary"
-                        size="sm"
+                        style={styles.infoButton}
+                        onClick={() => openDescriptionModal(task)}
+                      >
+                        <FiInfo /> Описание
+                      </Button>
+                      <Button
+                        style={styles.outlineButton}
                         onClick={() => openEditModal(task)}
-                        disabled={!['owner', 'manager'].includes(role)}
-                        className="me-2 d-flex align-items-center"
+                        disabled={!canManage}
                       >
-                        <FiEdit />
+                        <FiEdit /> Изменить
                       </Button>
                       <Button
-                        variant="outline-primary"
-                        size="sm"
+                        style={styles.outlineButton}
                         onClick={() => handleToggleStatus(task)}
-                        disabled={!['owner', 'manager'].includes(role)}
-                        className="me-2 d-flex align-items-center"
+                        disabled={!canManage}
                       >
-                        {task.status === 'closed' && <FiPlay />}
-                        {task.status === 'open' && <FiCheckSquare />}
-                        {task.status === 'completed' && <FiRotateCcw />}
+                        {task.status === 'closed' && <><FiPlay /> Открыть</>}
+                        {task.status === 'open' && <><FiCheckSquare /> Завершить</>}
+                        {task.status === 'completed' && <><FiRotateCcw /> Переоткрыть</>}
                       </Button>
                       <Button
-                        variant="outline-danger"
-                        size="sm"
+                        style={styles.dangerButton}
                         onClick={() => handleDelete(task.id)}
-                        disabled={
-                          !(
-                            role === 'owner' ||
-                            (role === 'manager' && settings.managerCanDeleteTasks)
-                          )
-                        }
-                        className="d-flex align-items-center"
+                        disabled={!canDelete}
                       >
-                        <FiTrash />
+                        <FiTrash /> Удалить
                       </Button>
-                    </div>
-                  </Card.Body>
-                </Card>
-              );
-            })}
-        </div>
-      </Card.Body>
+                    </Card.Footer>
+                  </Card>
+                );
+              })}
+          </div>
+        </Card.Body>
+      </Card>
 
-      {/* Модалка редактирования */}
-      <Modal show={showEdit} onHide={() => setShowEdit(false)}>
-        <Modal.Header closeButton>
-          <Modal.Title>Редактировать задачу</Modal.Title>
+      {/* Description Modal */}
+      <Modal show={showDescModal} onHide={() => setShowDescModal(false)} centered>
+        <Modal.Header style={styles.modalHeader} closeButton>
+          <Modal.Title style={styles.modalTitle}>
+            {selectedTaskDesc?.title || 'Описание задачи'}
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {selectedTaskDesc?.description ? (
+            <p>{selectedTaskDesc.description}</p>
+          ) : (
+            <p style={styles.noDescription}>Описание отсутствует</p>
+          )}
+        </Modal.Body>
+        <Modal.Footer style={styles.modalFooter}>
+          <Button style={styles.outlineButton} onClick={() => setShowDescModal(false)}>
+            Закрыть
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* Edit Modal */}
+      <Modal show={showEdit} onHide={() => setShowEdit(false)} centered>
+        <Modal.Header style={styles.modalHeader} closeButton>
+          <Modal.Title style={styles.modalTitle}>Редактировать задачу</Modal.Title>
         </Modal.Header>
         <Modal.Body>
           {editTask && (
             <Form>
-              <Form.Group className="mb-3">
+              {/* ... все поля редактирования без изменений ... */}
+              <Form.Group style={styles.formGroup}>
                 <Form.Label>Название</Form.Label>
                 <Form.Control
                   value={editTask.title}
                   onChange={e =>
                     setEditTask(prev => ({ ...prev, title: e.target.value }))
                   }
+                  style={styles.formControl}
                 />
               </Form.Group>
-              <Form.Group className="mb-3">
+              <Form.Group style={styles.formGroup}>
                 <Form.Label>Описание</Form.Label>
                 <Form.Control
                   as="textarea"
@@ -680,84 +683,114 @@ const TeamTasks = ({ teamId, currentUser, role }) => {
                   onChange={e =>
                     setEditTask(prev => ({ ...prev, description: e.target.value }))
                   }
+                  style={styles.formControl}
                 />
               </Form.Group>
-              <Form.Group className="mb-3">
-                <Form.Label>Категория</Form.Label>
-                <Form.Select
-                  value={editTask.categoryId || ''}
-                  onChange={e =>
-                    setEditTask(prev => ({ ...prev, categoryId: e.target.value }))
-                  }
-                >
-                  <option value="">Без категории</option>
-                  {categories.map(cat => (
-                    <option key={cat.id} value={cat.id}>
-                      {cat.name}
-                    </option>
-                  ))}
-                </Form.Select>
-              </Form.Group>
-              <Form.Group className="mb-3">
-                <Form.Label>Исполнитель</Form.Label>
-                <Form.Select
-                  value={editTask.assignedTo || ''}
-                  onChange={e =>
-                    setEditTask(prev => ({ ...prev, assignedTo: e.target.value }))
-                  }
-                >
-                  <option value="all">Вся команда</option>
-                  {members.map(u => (
-                    <option key={u.id} value={u.id}>
-                      {u.fullName || u.displayName} ({u.email})
-                    </option>
-                  ))}
-                </Form.Select>
-              </Form.Group>
-              <Form.Group className="mb-3">
+              <Row className="gx-3 gy-3">
+                <Col md={6}>
+                  <Form.Group style={styles.formGroup}>
+                    <Form.Label>Категория</Form.Label>
+                    <Form.Select
+                      value={editTask.categoryId || ''}
+                      onChange={e =>
+                        setEditTask(prev => ({ ...prev, categoryId: e.target.value }))
+                      }
+                      style={styles.formControl}
+                    >
+                      <option value="">Без категории</option>
+                      {categories.map(cat => (
+                        <option key={cat.id} value={cat.id}>
+                          {cat.name}
+                        </option>
+                      ))}
+                    </Form.Select>
+                  </Form.Group>
+                </Col>
+                <Col md={6}>
+                  <Form.Group style={styles.formGroup}>
+                    <Form.Label>Исполнитель</Form.Label>
+                    <Form.Select
+                      value={editTask.assignedTo || ''}
+                      onChange={e =>
+                        setEditTask(prev => ({ ...prev, assignedTo: e.target.value }))
+                      }
+                      style={styles.formControl}
+                    >
+                      <option value="">Вся команда</option>
+                      {members.map(u => (
+                        <option key={u.id} value={u.id}>
+                          {u.fullName || u.email}
+                        </option>
+                      ))}
+                    </Form.Select>
+                  </Form.Group>
+                </Col>
+              </Row>
+              <Row className="gx-3 gy-3">
+                <Col md={6}>
+                  <Form.Group style={styles.formGroup}>
+                    <Form.Label>Дедлайн</Form.Label>
+                    <DatePicker
+                      selected={editTask.dueDate}
+                      onChange={date =>
+                        setEditTask(prev => ({ ...prev, dueDate: date }))
+                      }
+                      className="form-control"
+                      style={styles.formControl}
+                      dateFormat="yyyy-MM-dd"
+                    />
+                  </Form.Group>
+                </Col>
+                <Col md={6} style={styles.colCenter}>
+                  <Form.Check
+                    type="checkbox"
+                    label="Важное"
+                    checked={editTask.priority}
+                    onChange={e =>
+                      setEditTask(prev => ({ ...prev, priority: e.target.checked }))
+                    }
+                  />
+                </Col>
+              </Row>
+              <Form.Group style={styles.formGroup}>
                 <Form.Label>Зависимости</Form.Label>
-                <Form.Control
-                  placeholder="ID зависимостей через запятую"
-                  value={editTask.dependencies.join(',')}
-                  onChange={e =>
-                    setEditTask(prev => ({
-                      ...prev,
-                      dependencies: e.target.value.split(',')
-                    }))
-                  }
-                />
+                <Dropdown>
+                  <Dropdown.Toggle style={styles.outlineButtonSmall}>
+                    {editTask.dependencies.length
+                      ? `Зависимости (${editTask.dependencies.length})`
+                      : 'Выбрать зависимости'}
+                  </Dropdown.Toggle>
+                  <Dropdown.Menu style={styles.dropdownMenu}>
+                    {tasksList.map(t => (
+                      <Dropdown.Item key={t.id} as="div" style={styles.dropdownItem}>
+                        <Form.Check
+                          type="checkbox"
+                          checked={editTask.dependencies.includes(t.id)}
+                          onChange={e => {
+                            const checked = e.target.checked;
+                            setEditTask(prev => ({
+                              ...prev,
+                              dependencies: checked
+                                ? [...prev.dependencies, t.id]
+                                : prev.dependencies.filter(x => x !== t.id)
+                            }));
+                          }}
+                          label={t.title}
+                          style={styles.checkbox}
+                        />
+                      </Dropdown.Item>
+                    ))}
+                  </Dropdown.Menu>
+                </Dropdown>
               </Form.Group>
-              <Form.Group className="mb-3">
-                <Form.Label>Дедлайн</Form.Label>
-                <DatePicker
-                  selected={editTask.dueDate}
-                  onChange={date =>
-                    setEditTask(prev => ({ ...prev, dueDate: date }))
-                  }
-                  className="form-control"
-                  dateFormat="yyyy-MM-dd"
-                />
-              </Form.Group>
-              <Form.Group className="mb-3">
-                <Form.Check
-                  type="checkbox"
-                  label="Важное"
-                  checked={editTask.priority}
-                  onChange={e =>
-                    setEditTask(prev => ({ ...prev, priority: e.target.checked }))
-                  }
-                />
-              </Form.Group>
-              <Form.Group className="mb-3">
+              <Form.Group style={styles.formGroup}>
                 <Form.Label>Тип уведомления</Form.Label>
                 <Form.Select
                   value={editTask.notificationType}
                   onChange={e =>
-                    setEditTask(prev => ({
-                      ...prev,
-                      notificationType: e.target.value
-                    }))
+                    setEditTask(prev => ({ ...prev, notificationType: e.target.value }))
                   }
+                  style={styles.formControl}
                 >
                   <option value="none">Нет</option>
                   <option value="interval">По интервалу</option>
@@ -765,7 +798,7 @@ const TeamTasks = ({ teamId, currentUser, role }) => {
                 </Form.Select>
               </Form.Group>
               {editTask.notificationType === 'interval' && (
-                <Form.Group className="mb-3">
+                <Form.Group style={styles.formGroup}>
                   <Form.Label>Интервал</Form.Label>
                   <Form.Select
                     value={editTask.notificationInterval}
@@ -775,6 +808,7 @@ const TeamTasks = ({ teamId, currentUser, role }) => {
                         notificationInterval: e.target.value
                       }))
                     }
+                    style={styles.formControl}
                   >
                     <option value="daily">Ежедневно</option>
                     <option value="weekly">Еженедельно</option>
@@ -783,7 +817,7 @@ const TeamTasks = ({ teamId, currentUser, role }) => {
                 </Form.Group>
               )}
               {editTask.notificationType === 'specificTime' && (
-                <Form.Group className="mb-3">
+                <Form.Group style={styles.formGroup}>
                   <Form.Label>Время уведомления</Form.Label>
                   <InputGroup>
                     <Form.Control
@@ -795,29 +829,232 @@ const TeamTasks = ({ teamId, currentUser, role }) => {
                           notificationTime: e.target.value
                         }))
                       }
+                      style={styles.formControl}
                     />
-                    <InputGroup.Text><FiClock /></InputGroup.Text>
+                    <InputGroup.Text style={styles.inputIcon}>
+                      <FiClock />
+                    </InputGroup.Text>
                   </InputGroup>
                 </Form.Group>
               )}
             </Form>
           )}
         </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowEdit(false)}>
+        <Modal.Footer style={styles.modalFooter}>
+          <Button style={styles.outlineButton} onClick={() => setShowEdit(false)}>
             Отмена
           </Button>
-          <Button variant="primary" onClick={handleSaveEdit}>
+          <Button style={styles.primaryButton} onClick={handleSaveEdit}>
             Сохранить
           </Button>
         </Modal.Footer>
       </Modal>
-    </Card>
+    </div>
   );
 };
 
+const styles = {
+  container: {
+    position: 'relative',
+    padding: '2rem',
+    background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
+    minHeight: '100vh'
+  },
+  decorCircleTop: {
+    position: 'absolute',
+    top: '-200px',
+    right: '-200px',
+    width: '600px',
+    height: '600px',
+    background: 'radial-gradient(circle, rgba(79,70,229,0.08) 0%, transparent 70%)',
+    pointerEvents: 'none'
+  },
+  decorCircleBottom: {
+    position: 'absolute',
+    bottom: '-300px',
+    left: '-200px',
+    width: '600px',
+    height: '600px',
+    background: 'radial-gradient(circle, rgba(99,102,241,0.08) 0%, transparent 70%)',
+    pointerEvents: 'none'
+  },
+  loadingContainer: {
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    height: '30vh'
+  },
+  glassCard: {
+    position: 'relative',
+    backgroundColor: 'rgba(255,255,255,0.95)',
+    borderRadius: '24px',
+    border: '1px solid rgba(241,245,249,0.8)',
+    boxShadow: '0 12px 32px rgba(15,23,42,0.1)',
+    backdropFilter: 'blur(8px)'
+  },
+  cardHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+    padding: '1rem 1.5rem',
+    backgroundColor: 'transparent',
+    borderBottom: 'none'
+  },
+  heading: {
+    margin: 0,
+    fontSize: '1.25rem',
+    fontWeight: 800,
+    background: 'linear-gradient(45deg, #4f46e5 30%, #6366f1 100%)',
+    WebkitBackgroundClip: 'text',
+    WebkitTextFillColor: 'transparent'
+  },
+  iconPrimary: {
+    color: 'rgba(79,70,229,0.8)'
+  },
+  cardBody: {
+    padding: '1.5rem'
+  },
+  accordion: {
+    marginBottom: '1.5rem'
+  },
+  accordionItem: {
+    border: 'none'
+  },
+  accordionHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+    backgroundColor: 'rgba(241,245,249,0.8)',
+    borderRadius: '12px'
+  },
+  accordionHeaderSmall: { /* ... */ },
+  accordionBody: { /* ... */ },
+  accordionBodySmall: { /* ... */ },
+  iconSuccess: {
+    color: 'rgba(16,185,129,0.8)'
+  },
+  row: {
+    marginBottom: '1rem'
+  },
+  inputIcon: {
+    backgroundColor: '#fff',
+    border: 'none'
+  },
+  input: {
+    borderRadius: '12px',
+    border: '2px solid #e2e8f0'
+  },
+  dateInput: {
+    borderRadius: '12px',
+    border: '2px solid #e2e8f0',
+    minWidth: '6rem'
+  },
+  colCenter: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  formGroup: {
+    marginBottom: '1rem'
+  },
+  textarea: {
+    borderRadius: '12px',
+    border: '2px solid #e2e8f0',
+    overflow: 'hidden'
+  },
+  addRow: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: '1rem',
+    marginTop: '1rem'
+  },
+  successButton: {
+    background: 'linear-gradient(45deg, #10b981 0%, #34d399 100%)',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '14px',
+    padding: '0.5rem 1rem',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem'
+  },
+  innerAccordion: { /* ... */ },
+  outlineButtonSmall: { /* ... */ },
+  dropdownMenu: { /* ... */ },
+  dropdownItem: { /* ... */ },
+  checkbox: { margin: 0 },
+  taskList: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '1rem'
+  },
+  taskCard: {
+    borderRadius: '16px',
+    border: 'none',
+    boxShadow: '0 8px 24px rgba(15,23,42,0.1)'
+  },
+  taskCardBody: {
+    padding: '1.25rem'
+  },
+  taskHeader: {
+    marginBottom: '0.5rem'
+  },
+  taskTitle: {
+    margin: 0,
+    fontWeight: 700,
+    fontSize: '1.1rem'
+  },
+  metaRow: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '0.5rem',
+    marginBottom: '0.75rem',
+    alignItems: 'center'
+  },
+  categoryBadge: { /* ... */ },
+  infoRow: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '1rem',
+    color: '#64748b',
+    fontSize: '0.9rem'
+  },
+  infoItem: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.3rem'
+  },
+  cardFooter: {
+    display: 'flex',
+    justifyContent: 'flex-end',
+    gap: '0.5rem',
+    backgroundColor: 'transparent',
+    borderTop: 'none',
+    padding: '0.75rem 1.25rem'
+  },
+  infoButton: { /* ... */ },
+  outlineButton: { /* ... */ },
+  dangerButton: { /* ... */ },
+  lightBadge: { /* ... */ },
+  dangerBadge: { /* ... */ },
+  warningBadge: { /* ... */ },
+  statusBadge: status => ({ /* ... */ }),
+  modalHeader: { borderBottom: 'none' },
+  modalTitle: { fontWeight: 600 },
+  modalFooter: {
+    borderTop: 'none',
+    display: 'flex',
+    justifyContent: 'flex-end',
+    padding: '1rem'
+  },
+  formControl: { /* ... */ },
+  primaryButton: { /* ... */ },
+  noDescription: {
+    color: '#64748b',
+    fontStyle: 'italic',
+    textAlign: 'center',
+    padding: '1rem'
+  }
+};
+
 export default TeamTasks;
-
-
-
-

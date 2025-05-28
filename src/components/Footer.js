@@ -96,7 +96,7 @@ const Footer = () => {
         <h4 style={styles.heading}>Социальные сети</h4>
         <div style={styles.icons}>
           <a
-            href="https://t.me/your_tg"
+            href="https://t.me/komputornie_technologii"
             target="_blank"
             rel="noopener noreferrer"
             style={styles.icon}
@@ -104,7 +104,7 @@ const Footer = () => {
             <FaTelegramPlane size={24} />
           </a>
           <a
-            href="https://vk.com/your_vk"
+            href="https://vk.com/ktiib"
             target="_blank"
             rel="noopener noreferrer"
             style={styles.icon}

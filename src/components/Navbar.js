@@ -1,180 +1,209 @@
 import React, { useState, useEffect } from "react";
-import { auth } from "../firebaseConfig";
+import { auth, db } from "../firebaseConfig";
 import { onAuthStateChanged, signOut } from "firebase/auth";
-import { Link, useNavigate, useLocation } from "react-router-dom";
-import {
-  FiLogOut,
-  FiHome,
-  FiUsers,
-  FiHelpCircle,
-  FiLifeBuoy,
-  FiInfo,
-  FiClipboard,
-} from "react-icons/fi";
-
-const HoverLink = ({ to, children, onClick }) => {
-  const [hover, setHover] = useState(false);
-
-  const linkStyle = {
-    display: "flex",
-    alignItems: "center",
-    gap: "8px",
-    textDecoration: "none",
-    color: hover ? "#4f46e5" : "#0f172a",
-    fontSize: "0.95rem",
-    fontWeight: 500,
-    cursor: "pointer",
-    transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
-    padding: "10px 16px",
-    borderRadius: "8px",
-    backgroundColor: hover ? "rgba(79, 70, 229, 0.05)" : "transparent",
-  };
-
-  return (
-    <Link
-      to={to}
-      style={linkStyle}
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
-      onClick={onClick}
-    >
-      {children}
-    </Link>
-  );
-};
+import { collection, getDocs, doc, getDoc } from "firebase/firestore";
+import { Link, useNavigate } from "react-router-dom";
+import { FiLogOut, FiUsers } from "react-icons/fi";
 
 const Navbar = () => {
   const [currentUser, setCurrentUser] = useState(null);
+  const [teams, setTeams] = useState([]);
+  const [userPoints, setUserPoints] = useState(null);
+  const [userName, setUserName] = useState("");
+  const [hovered, setHovered] = useState(false);
   const navigate = useNavigate();
-  const { pathname } = useLocation();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
+      if (user) {
+        const snap = await getDocs(collection(db, "teams"));
+        const userTeams = snap.docs
+          .map(doc => ({ id: doc.id, ...doc.data() }))
+          .filter(team => team.members.some(m => m.userId === user.uid));
+        setTeams(userTeams);
+
+        const userRef = doc(db, "users", user.uid);
+        const userSnap = await getDoc(userRef);
+        if (userSnap.exists()) {
+          const data = userSnap.data();
+          setUserPoints(data.points || 0);
+          setUserName(data.fullName || user.displayName || "");
+        } else {
+          setUserPoints(0);
+          setUserName(user.displayName || "");
+        }
+      } else {
+        setTeams([]);
+        setUserPoints(null);
+        setUserName("");
+      }
     });
     return unsubscribe;
   }, []);
 
-  const handleLogout = async (e) => {
-    e.preventDefault();
+  const handleLogout = async () => {
     try {
       await signOut(auth);
-      setCurrentUser(null);
       navigate("/login");
     } catch (error) {
-      console.error("Ошибка выхода:", error.message);
+      console.error("Ошибка выхода:", error);
     }
   };
 
-  // Определяем активные страницы
-  const isLoginPage = pathname === "/login";
-  const isHomePage = pathname === "/";
-  const isTasksPage = pathname === "/tasks";
-  const isTeamsPage = pathname === "/teams";
-  const isFriendRequestsPage = pathname === "/friend-requests";
-  const isHelpPage = pathname === "/help";
-  const isSupportPage = pathname === "/support";
-  const isAboutPage = pathname === "/about";
-
-  const styles = {
-    nav: {
-      display: "flex",
-      justifyContent: "space-between",
-      alignItems: "center",
-      padding: "1rem 3rem",
-      background: "rgba(255, 255, 255, 0.85)",
-      backdropFilter: "blur(12px)",
-      borderBottom: "1px solid rgba(241, 245, 249, 0.8)",
-      position: "sticky",
-      top: 0,
-      zIndex: 1000,
-      boxShadow: "0 4px 20px rgba(15, 23, 42, 0.05)",
-    },
-    section: {
-      display: "flex",
-      gap: "8px",
-      alignItems: "center",
-    },
-    logo: {
-      fontSize: "1.5rem",
-      fontWeight: 700,
-      background: "linear-gradient(45deg, #4f46e5 30%, #6366f1 100%)",
-      WebkitBackgroundClip: "text",
-      WebkitTextFillColor: "transparent",
-      letterSpacing: "-0.025em",
-    },
-  };
-
   return (
-    <nav style={styles.nav}>
-      <div style={styles.section}>
-        {/* Вход / Выход */}
-        {!currentUser && !isLoginPage && (
-          <HoverLink to="/login">
-            <FiLogOut size={18} /> Войти
-          </HoverLink>
-        )}
-        {currentUser && (
-          <HoverLink onClick={handleLogout}>
-            <FiLogOut size={18} /> Выйти
-          </HoverLink>
-        )}
-
-        {/* Главная */}
-        {!isHomePage && (
-          <HoverLink to="/">
-            <FiHome size={18} /> Главная
-          </HoverLink>
-        )}
-
-        {/* Задачи */}
-        {currentUser && !isTasksPage && (
-          <HoverLink to="/tasks">
-            <FiClipboard size={18} /> Задачи
-          </HoverLink>
-        )}
-
-        {/* Команды */}
-        {currentUser && !isTeamsPage && (
-          <HoverLink to="/teams">
-            <FiUsers size={18} /> Команды
-          </HoverLink>
-        )}
-
-        {/* Запросы в друзья */}
-        {currentUser && !isFriendRequestsPage && (
-          <HoverLink to="/friend-requests">
-            <FiUsers size={18} /> Запросы в друзья
-          </HoverLink>
+    <nav style={styles.navbar}>
+      <div style={styles.leftSection}>
+        <div
+          style={styles.logo}
+          onClick={() => navigate("/")}
+        >
+          RunPlan
+        </div>
+        {userName && (
+          <span style={styles.userName}>
+            {userName}
+          </span>
         )}
       </div>
 
-      <div style={styles.logo}>Tusk</div>
+      <div style={styles.links}>
+        {currentUser ? (
+          <>
+            {teams.length <= 1 ? (
+              <Link to="/teams" style={styles.link}>
+                <FiUsers /> Моя команда
+              </Link>
+            ) : (
+              <div
+                style={styles.dropdown}
+                onMouseEnter={() => setHovered(true)}
+                onMouseLeave={() => setHovered(false)}
+              >
+                <span style={styles.link}>
+                  <FiUsers /> Мои команды
+                </span>
+                {hovered && (
+                  <div style={styles.dropdownContent}>
+                    <Link to="/teams" style={styles.dropdownItem}>
+                      <strong>Все команды</strong>
+                    </Link>
+                    {teams.map(team => (
+                      <Link
+                        key={team.id}
+                        to={`/team/${team.id}`}
+                        style={styles.dropdownItem}
+                      >
+                        {team.name}
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
-      <div style={styles.section}>
-        {/* Справка */}
-        {!isHelpPage && (
-          <HoverLink to="/help">
-            <FiHelpCircle size={18} /> Справка
-          </HoverLink>
-        )}
+            <span style={styles.points}>
+              Очки: {userPoints ?? "..."}
+            </span>
 
-        {/* Поддержка */}
-        {!isSupportPage && (
-          <HoverLink to="/support">
-            <FiLifeBuoy size={18} /> Поддержка
-          </HoverLink>
-        )}
-
-        {/* О нас */}
-        {!isAboutPage && (
-          <HoverLink to="/about">
-            <FiInfo size={18} /> О нас
-          </HoverLink>
+            <span onClick={handleLogout} style={styles.link}>
+              <FiLogOut /> Выйти
+            </span>
+          </>
+        ) : (
+          <>
+            <Link to="/login" style={styles.link}>Войти</Link>
+            <Link to="/register" style={styles.link}>Регистрация</Link>
+          </>
         )}
       </div>
     </nav>
   );
 };
 
+const styles = {
+  navbar: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: "1rem 2rem",
+    backgroundColor: "rgba(255, 255, 255, 0.95)",
+    backdropFilter: "blur(8px)",
+    borderBottom: "1px solid rgba(241, 245, 249, 0.8)",
+    boxShadow: "0 12px 32px rgba(15, 23, 42, 0.1)",
+    position: "sticky",
+    top: 0,
+    zIndex: 1000,
+  },
+  leftSection: {
+    display: "flex",
+    alignItems: "center",
+    gap: "0.5rem",
+  },
+  logo: {
+    fontWeight: 800,
+    fontSize: "2rem",
+    cursor: "pointer",
+    background: "linear-gradient(45deg, #4f46e5 30%, #6366f1 100%)",
+    WebkitBackgroundClip: "text",
+    WebkitTextFillColor: "transparent",
+  },
+  userName: {
+    fontWeight: 500,
+    fontSize: "1.25rem",
+    color: "#475569",
+  },
+  links: {
+    display: "flex",
+    alignItems: "center",
+    gap: "1.5rem",
+    position: "relative",
+  },
+  link: {
+    textDecoration: "none",
+    color: "#475569",
+    fontWeight: 500,
+    display: "flex",
+    alignItems: "center",
+    gap: "0.4rem",
+    cursor: "pointer",
+    transition: "color 0.2s, transform 0.2s",
+    userSelect: "none",
+  },
+  points: {
+    fontWeight: 600,
+    background: "linear-gradient(45deg, #4f46e5 30%, #6366f1 100%)",
+    WebkitBackgroundClip: "text",
+    WebkitTextFillColor: "transparent",
+  },
+  dropdown: {
+    position: "relative",
+    display: "inline-block",
+  },
+  dropdownContent: {
+    position: "absolute",
+    top: "110%",
+    left: 0,
+    backgroundColor: "rgba(255, 255, 255, 0.95)",
+    backdropFilter: "blur(8px)",
+    border: "1px solid rgba(241, 245, 249, 0.8)",
+    boxShadow: "0 16px 40px rgba(15, 23, 42, 0.15)",
+    borderRadius: "14px",
+    padding: "0.5rem 0",
+    marginTop: "0.25rem",
+    minWidth: "200px",
+    zIndex: 1001,
+  },
+  dropdownItem: {
+    display: "block",
+    padding: "0.75rem 1rem",
+    color: "#475569",
+    textDecoration: "none",
+    whiteSpace: "nowrap",
+    transition: "background-color 0.2s, color 0.2s",
+    cursor: "pointer",
+  },
+};
+
 export default Navbar;
+

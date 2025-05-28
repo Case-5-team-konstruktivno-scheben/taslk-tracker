@@ -1,0 +1,26 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    functions {
+      getRole(uid, teamId) {
+        let team = get(/databases/$(database)/documents/teams/$(teamId)).data;
+        let roles = team.settings.roles;
+        let userRoleKey = team.members[uid];
+        return roles[userRoleKey] != null ? roles[userRoleKey] : {};
+      }
+    }
+
+    match /teams/{teamId} {
+      allow get, list: if request.auth != null;
+      allow update: if request.auth != null
+        && getRole(request.auth.uid, teamId).rights.manageRoles == true;
+    }
+
+    match /categories/{categoryId} {
+      allow get: if request.auth != null;
+      allow create, update, delete: if request.auth != null
+        && getRole(request.auth.uid, resource.data.teamId).rights.manageRoles == true;
+    }
+    // …и т.д. для других коллекций
+  }
+}

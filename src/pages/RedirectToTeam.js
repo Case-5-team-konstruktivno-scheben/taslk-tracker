@@ -1,4 +1,3 @@
-// src/pages/RedirectToTeam.js
 
 import React, { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
@@ -13,7 +12,6 @@ const RedirectToTeam = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Если нет авторизованного пользователя, сразу прекращаем загрузку
     if (!currentUser) {
       setLoading(false);
       return;
@@ -46,12 +44,10 @@ const RedirectToTeam = () => {
     );
   }
 
-  // Если пользователь не залогинен, перенаправляем на страницу входа
   if (!currentUser) {
     return <Navigate to="/login" replace />;
   }
 
-  // Если нашли хотя бы одну команду — на неё, иначе — на общий список команд
   return firstTeamId
     ? <Navigate to={`/team/${firstTeamId}`} replace />
     : <Navigate to="/teams" replace />;

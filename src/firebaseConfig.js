@@ -1,4 +1,4 @@
-// firebaseConfig.js
+
 import { initializeApp } from "firebase/app";
 import {
   getAuth,
@@ -18,7 +18,7 @@ import {
   arrayUnion
 } from "firebase/firestore";
 
-// Настройки Firebase
+
 const firebaseConfig = {
   apiKey: "AIzaSyBHKIRfKv48RSG5Qf3-CKre4ffgzLw02gg",
   authDomain: "task-tracker-fb9f7.firebaseapp.com",
@@ -29,20 +29,13 @@ const firebaseConfig = {
   measurementId: "G-W76VWWSFTD"
 };
 
-// Инициализация Firebase
 const app = initializeApp(firebaseConfig);
 
-// Инициализация сервисов
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// Экспортируем объекты аутентификации и базы данных для использования в других частях проекта
 export { auth, db };
 
-/**
- * Регистрирует нового пользователя и сохраняет его данные в Firestore,
- * назначая при необходимости companyId и teamId.
- */
 export const registerUser = async (
   fullName,
   email,
@@ -58,14 +51,13 @@ export const registerUser = async (
     );
     const user = userCredential.user;
 
-    // Инициализация данных пользователя в Firestore
     await setDoc(doc(db, "users", user.uid), {
       fullName,
       email,
       companyId,
       teamIds: teamId ? [teamId] : [],
-      points: 0, // Добавляем поле points с начальным значением
-      level: "Novice" // Уровень по умолчанию
+      points: 0, 
+      level: "Novice" 
     });
 
     console.log("Пользователь зарегистрирован:", user.uid);
@@ -76,9 +68,6 @@ export const registerUser = async (
   }
 };
 
-/**
- * Функция для увеличения очков пользователя.
- */
 export const increaseUserPoints = async (userId, points) => {
   try {
     const userRef = doc(db, "users", userId);
@@ -91,7 +80,6 @@ export const increaseUserPoints = async (userId, points) => {
     const userData = userSnap.data();
     const currentPoints = userData.points || 0;
 
-    // Обновляем очки пользователя
     await updateDoc(userRef, {
       points: currentPoints + points
     });
@@ -103,9 +91,6 @@ export const increaseUserPoints = async (userId, points) => {
   }
 };
 
-/**
- * Создает новую компанию и возвращает ее ID.
- */
 export const createCompany = async (name) => {
   try {
     const ownerId = auth.currentUser.uid;
@@ -122,9 +107,7 @@ export const createCompany = async (name) => {
   }
 };
 
-/**
- * Создает новую команду внутри компании и возвращает объект с ID и кодом присоединения.
- */
+
 export const createTeam = async (name, companyId) => {
   try {
     const joinCode = Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -142,9 +125,6 @@ export const createTeam = async (name, companyId) => {
   }
 };
 
-/**
- * Позволяет пользователю присоединиться к команде по коду.
- */
 export const joinTeamByCode = async (code, userId) => {
   try {
     const q = query(
@@ -176,7 +156,6 @@ export const joinTeamByCode = async (code, userId) => {
   }
 };
 
-// Функции работы с запросами в друзья
 export const sendFriendRequest = async (senderId, receiverId) => {
   try {
     await addDoc(collection(db, "friend_requests"), {
@@ -210,9 +189,6 @@ export const rejectFriendRequest = async (requestId) => {
   }
 };
 
-/**
- * Возвращает список команд, в которых состоит пользователь.
- */
 export const getUserTeams = async (userId) => {
   try {
     const userSnap = await getDoc(doc(db, "users", userId));
@@ -231,9 +207,7 @@ export const getUserTeams = async (userId) => {
   }
 };
 
-/**
- * Возвращает роль пользователя в указанной команде.
- */
+
 export const getTeamRole = async (teamId, userId) => {
   try {
     const teamSnap = await getDoc(doc(db, "teams", teamId));
@@ -267,9 +241,7 @@ export const isObserver = async (teamId, userId) => {
   return role === "observer";
 };
 
-/**
- * Возвращает команду по коду присоединения.
- */
+
 export const getTeamByJoinCode = async (code) => {
   const q = query(collection(db, "teams"), where("joinCode", "==", code));
   const querySnapshot = await getDocs(q);
@@ -280,9 +252,7 @@ export const getTeamByJoinCode = async (code) => {
   return { id: teamDoc.id, data: teamDoc.data() };
 };
 
-/**
- * Добавляет пользователя в команду с указанной ролью и обновляет документ пользователя.
- */
+
 export const addUserToTeam = async (teamId, userId, role = "member") => {
   const teamRef = doc(db, "teams", teamId);
   const teamSnap = await getDoc(teamRef);
@@ -303,9 +273,7 @@ export const addUserToTeam = async (teamId, userId, role = "member") => {
   console.log(`Пользователь ${userId} добавлен в команду ${teamId} как ${role}`);
 };
 
-/**
- * Утилита для проверки прав пользователя в команде по заданному действию.
- */
+
 export const hasPermission = (team, userId, action) => {
   const member = team.members.find(m => m.userId === userId);
   if (!member) return false;

@@ -1,50 +1,83 @@
 // src/context/AuthContext.js
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { auth, db } from "../firebaseConfig";  // Путь к Firebase
-import { onAuthStateChanged } from "firebase/auth";
+import { auth, db, getUserTeams } from "../firebaseConfig"; // добавили getUserTeams
+import {
+  onAuthStateChanged,
+  setPersistence,
+  browserLocalPersistence
+} from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 
 // Создаем контекст для авторизации
 export const AuthContext = createContext();
 
-// Хук useAuth для использования контекста
+// Хук useAuth для доступа к контексту
 export const useAuth = () => {
-  return useContext(AuthContext); // Хук для доступа к контексту
+  return useContext(AuthContext);
 };
 
-// Создаем AuthProvider, который будет оборачивать приложение
 export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [role, setRole] = useState(null);
-  const [loading, setLoading] = useState(true); // Состояние загрузки
+  const [teamRoles, setTeamRoles] = useState({});  // состояние для ролей в командах
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        setLoading(true); // Начинаем загрузку данных
-        const userRef = doc(db, "users", user.uid); // Получаем ссылку на документ пользователя в Firestore
-        const docSnap = await getDoc(userRef); // Получаем документ пользователя
+    // Устанавливаем persistence один раз при инициализации
+    setPersistence(auth, browserLocalPersistence)
+      .catch((err) => {
+        console.error("Не удалось установить persistence:", err);
+      })
+      .then(() => {
+        // Подписываемся на изменения авторизации
+        const unsubscribe = onAuthStateChanged(auth, async (user) => {
+          setLoading(true);
 
-        if (docSnap.exists()) {
-          // Если документ существует, сохраняем данные о пользователе в состояние
-          setCurrentUser({ ...user, role: docSnap.data().role });
-          setRole(docSnap.data().role); // Устанавливаем роль пользователя
-        } else {
-          setCurrentUser({ ...user, role: "user" }); // Если роль не найдена, назначаем роль "user"
-          setRole("user"); // Устанавливаем роль по умолчанию
-        }
-      } else {
-        setCurrentUser(null); // Если пользователь не авторизован, сбрасываем состояние
-        setRole(null); // Роль сбрасывается
-      }
-      setLoading(false); // Завершаем загрузку
-    });
+          if (user) {
+            // Получаем документ пользователя
+            const userRef = doc(db, "users", user.uid);
+            const docSnap = await getDoc(userRef);
 
-    return unsubscribe; // Очищаем подписку при размонтировании компонента
+            // Извлекаем сохранённую роль (если есть)
+            const savedRole = docSnap.exists() ? docSnap.data().role : "user";
+
+            setCurrentUser(user);
+            setRole(savedRole);
+
+            // Получаем список команд пользователя и его роль в каждой
+            try {
+              const teams = await getUserTeams(user.uid);
+              const rolesMap = {};
+              teams.forEach(({ id, data }) => {
+                const member = data.members.find(m => m.userId === user.uid);
+                rolesMap[id] = member?.role ?? null;
+              });
+              setTeamRoles(rolesMap);
+            } catch (err) {
+              console.error("Ошибка при получении ролей команд:", err);
+              setTeamRoles({});
+            }
+          } else {
+            setCurrentUser(null);
+            setRole(null);
+            setTeamRoles({});
+          }
+
+          setLoading(false);
+        });
+
+        return unsubscribe;
+      });
   }, []);
 
   return (
-    <AuthContext.Provider value={{ currentUser, role, setRole, loading }}>
+    <AuthContext.Provider value={{
+      currentUser,
+      role,
+      teamRoles,     // теперь в контексте доступны роли пользователя в командах
+      setRole,
+      loading
+    }}>
       {children}
     </AuthContext.Provider>
   );

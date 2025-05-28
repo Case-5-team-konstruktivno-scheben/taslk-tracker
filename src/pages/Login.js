@@ -1,15 +1,15 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { FiLogIn, FiLoader } from "react-icons/fi";
 import { auth, db } from "../firebaseConfig";
 import { signInWithEmailAndPassword } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc } from "firebase/firestore";  // оставляем импорт по требованию
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [hover, setHover] = useState(false);
   const navigate = useNavigate();
 
   const handleLogin = async (e) => {
@@ -17,28 +17,9 @@ const Login = () => {
     setError("");
     setLoading(true);
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
-
-      // Получаем роль из Firestore
-      const docRef = doc(db, "users", user.uid);
-      const docSnap = await getDoc(docRef);
-
-      if (docSnap.exists()) {
-        console.log("Данные пользователя из Firestore после логина:", docSnap.data());
-        const role = docSnap.data().role.toLowerCase();
-        console.log("Роль пользователя после логина:", role);
-
-        if (role === "admin") {
-          navigate("/admin");
-        } else if (role === "user") {
-          navigate("/tasks");
-        } else {
-          setError("Неизвестная роль пользователя.");
-        }
-      } else {
-        setError("Не удалось определить роль пользователя.");
-      }
+      await signInWithEmailAndPassword(auth, email, password);
+      // После успешного входа всегда направляем на /admin
+      navigate("/admin", { replace: true });
     } catch (error) {
       setError("Неверные данные для входа.");
     } finally {
@@ -48,56 +29,74 @@ const Login = () => {
 
   return (
     <div style={styles.formContainer}>
-      <h1 style={styles.title}>Вход</h1>
+      {/* Декоративные элементы фона */}
+      <div style={styles.decorCircle} />
+      <div
+        style={{
+          ...styles.decorCircle,
+          top: "auto",
+          bottom: "-200px",
+          left: "-150px",
+          background: "radial-gradient(circle, rgba(99, 102, 241, 0.08) 0%, transparent 70%)"
+        }}
+      />
+
+      <h1 style={styles.title}>Вход в систему</h1>
+
       <form onSubmit={handleLogin} style={styles.form}>
         <div style={styles.inputContainer}>
-          <label htmlFor="email">Почта</label>
           <input
-            autoFocus
             type="email"
-            id="email"
+            placeholder="Email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            placeholder="Введите почту"
             style={styles.input}
             disabled={loading}
           />
         </div>
+
         <div style={styles.inputContainer}>
-          <label htmlFor="password">Пароль</label>
           <input
             type="password"
-            id="password"
+            placeholder="Пароль"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            placeholder="Введите пароль"
             style={styles.input}
             disabled={loading}
           />
         </div>
-        {error && <p style={styles.error}>{error}</p>}
+
+        {error && <div style={styles.error}>{error}</div>}
+
         <button
           type="submit"
           style={{
             ...styles.button,
-            transform: hover ? "scale(1.1)" : "scale(1)",
-            transition: "transform 0.2s ease",
-            opacity: loading ? 0.6 : 1,
-            cursor: loading ? "not-allowed" : "pointer",
+            opacity: loading ? 0.8 : 1,
+            cursor: loading ? "not-allowed" : "pointer"
           }}
-          onMouseEnter={() => setHover(true)}
-          onMouseLeave={() => setHover(false)}
           disabled={loading}
         >
-          {loading ? "Вход..." : "Войти"}
+          {loading ? (
+            <>
+              <FiLoader style={{ animation: "spin 1s linear infinite" }} />
+              Загрузка...
+            </>
+          ) : (
+            <>
+              <FiLogIn />
+              Войти
+            </>
+          )}
         </button>
       </form>
+
       <p style={styles.linkText}>
         Нет аккаунта?{" "}
         <Link to="/register" style={styles.link}>
-          Зарегистрироваться
+          Создать аккаунт
         </Link>
       </p>
     </div>
@@ -106,64 +105,99 @@ const Login = () => {
 
 const styles = {
   formContainer: {
-    maxWidth: "500px",
-    margin: "0 auto",
-    backgroundColor: "#f3f3f3",
-    borderRadius: "10px",
-    boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
-    minHeight: "calc(100vh - 80px)",
     display: "flex",
     flexDirection: "column",
-    justifyContent: "center",
     alignItems: "center",
-    padding: "1rem",
+    justifyContent: "center",
+    minHeight: "100vh",
+    background: "linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)",
+    padding: "2rem",
+    position: "relative",
+    overflow: "hidden",
+    fontFamily: "'Inter', sans-serif"
   },
   title: {
     fontSize: "2.5rem",
+    fontWeight: 800,
+    color: "#0f172a",
+    marginBottom: "2rem",
+    background: "linear-gradient(45deg, #4f46e5 30%, #6366f1 100%)",
+    WebkitBackgroundClip: "text",
+    WebkitTextFillColor: "transparent",
     textAlign: "center",
-    marginBottom: "0.5rem",
+    letterSpacing: "-0.025em"
   },
   form: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "0.5rem",
+    backgroundColor: "rgba(255, 255, 255, 0.95)",
+    padding: "2.5rem",
+    borderRadius: "24px",
+    boxShadow: "0 12px 32px rgba(15, 23, 42, 0.1)",
+    border: "1px solid rgba(241, 245, 249, 0.8)",
+    backdropFilter: "blur(8px)",
     width: "100%",
-    padding: "2rem",
+    maxWidth: "440px",
+    transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)"
   },
   inputContainer: {
-    display: "flex",
-    flexDirection: "column",
+    marginBottom: "1.5rem"
   },
   input: {
-    padding: "0.75rem",
-    fontSize: "1.25rem",
     width: "100%",
-    maxWidth: "400px",
-    margin: "0 auto",
-    borderRadius: "1rem",
-    border: "1px solid #ddd",
-    backgroundColor: "#ffffff",
-    marginBottom: "0.5rem",
+    padding: "1rem 1.5rem",
+    fontSize: "1rem",
+    borderRadius: "12px",
+    border: "2px solid #e2e8f0",
+    transition: "all 0.2s ease",
+    backgroundColor: "rgba(255, 255, 255, 0.9)",
+    outline: "none"
   },
   button: {
-    backgroundColor: "#ffcba4",
-    padding: "1.5rem",
-    fontSize: "1.5rem",
-    fontWeight: "bold",
+    width: "100%",
+    padding: "1rem 2rem",
+    fontSize: "1.1rem",
+    fontWeight: 600,
+    background: "linear-gradient(45deg, #4f46e5 0%, #6366f1 100%)",
+    color: "#fff",
     border: "none",
-    borderRadius: "2rem",
+    borderRadius: "12px",
+    cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: "0.8rem",
+    transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+    position: "relative"
   },
   error: {
-    color: "red",
+    color: "#dc2626",
+    backgroundColor: "#fee2e2",
+    padding: "1rem",
+    borderRadius: "8px",
+    margin: "1.5rem 0",
+    border: "1px solid #fca5a5",
     textAlign: "center",
+    fontSize: "0.9rem"
   },
   linkText: {
-    textAlign: "center",
+    color: "#64748b",
+    marginTop: "2rem",
+    fontSize: "0.95rem"
   },
   link: {
-    color: "#007bff",
+    color: "#4f46e5",
+    fontWeight: 600,
     textDecoration: "none",
+    transition: "all 0.2s ease"
   },
+  decorCircle: {
+    position: "absolute",
+    top: "-150px",
+    right: "-150px",
+    width: "400px",
+    height: "400px",
+    background: "radial-gradient(circle, rgba(79, 70, 229, 0.08) 0%, transparent 70%)",
+    pointerEvents: "none"
+  }
 };
 
 export default Login;

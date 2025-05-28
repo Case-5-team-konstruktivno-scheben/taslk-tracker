@@ -109,3 +109,11 @@
 .react-datepicker__time-list-item:hover {
   background-color: #d0e2ff;
 }
+/* Добавить в глобальные стили */
+.custom-datepicker-popper {
+  z-index: 9999 !important;
+}
+
+.custom-datepicker-day--selected {
+  background: #4f46e5 !important;
+}

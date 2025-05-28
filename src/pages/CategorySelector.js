@@ -24,7 +24,6 @@ const CategorySelector = ({
         </button>
       </div>
       <ul style={styles.categoryList}>
-        {/* Дефолтные */}
         <li
           style={{
             ...styles.categoryItem,
@@ -50,13 +49,14 @@ const CategorySelector = ({
             onClick={() => setSelectedCategory(cat.id)}
           >
             <span>{cat.name}</span>
-            {isEditing && (
+            {isEditing && typeof deleteCategory === "function" && (
               <button
                 onClick={(e) => {
                   e.stopPropagation();
                   deleteCategory(cat.id);
                 }}
                 style={styles.deleteButton}
+                title="Удалить категорию"
               >
                 –
               </button>
@@ -64,28 +64,30 @@ const CategorySelector = ({
           </li>
         ))}
 
-        {/* Ввод новой категории и кнопка */}
-        <li style={{ marginTop: 10, display: "flex", gap: "8px", alignItems: "center" }}>
+        <li
+          style={{
+            marginTop: 10,
+            display: "flex",
+            gap: "8px",
+            alignItems: "center",
+          }}
+        >
           <input
             type="text"
             placeholder="Новая категория"
             value={newCategoryName}
             onChange={(e) => setNewCategoryName(e.target.value)}
             style={styles.newCategoryInput}
-            onFocus={(e) => (e.target.style.borderColor = "#4CAF50")}
-            onBlur={(e) => (e.target.style.borderColor = "#ccc")}
           />
           <button
             onClick={addCategory}
             style={styles.addButton}
-            onMouseOver={(e) => (e.target.style.backgroundColor = "#45a049")}
-            onMouseOut={(e) => (e.target.style.backgroundColor = "#4CAF50")}
+            title="Добавить категорию"
           >
             +
           </button>
         </li>
 
-        {/* Завершённые задачи */}
         <li
           style={{
             ...styles.categoryItem,
@@ -109,14 +111,14 @@ const styles = {
     width: 220,
     borderRight: "1px solid #ddd",
     padding: 20,
-    backgroundColor: "#f8f9fa",  // Легкий фон для боковой панели
-    borderRadius: "12px",  // Закругленные углы
-    boxShadow: "0 4px 8px rgba(0,0,0,0.1)",  // Тень для боковой панели
+    backgroundColor: "#f8f9fa",
+    borderRadius: "12px",
+    boxShadow: "0 4px 8px rgba(0,0,0,0.1)",
   },
   title: {
     fontSize: 24,
     marginBottom: 16,
-    fontWeight: "bold",  // Сделал заголовок жирным
+    fontWeight: "bold",
   },
   header: {
     display: "flex",
@@ -135,10 +137,6 @@ const styles = {
     cursor: "pointer",
     fontSize: 16,
     padding: 4,
-    transition: "transform 0.3s ease",  // Плавное движение
-    ":hover": {
-      transform: "scale(1.1)",  // Легкое увеличение при наведении
-    },
   },
   categoryList: {
     listStyle: "none",
@@ -148,28 +146,20 @@ const styles = {
   categoryItem: {
     padding: "8px 0",
     fontSize: 16,
-    transition: "background-color 0.3s ease",  // Плавное изменение фона
-    ":hover": {
-      backgroundColor: "#f1f1f1",  // Легкое затемнение фона при наведении
-    },
   },
   newCategoryInput: {
-    width: "150px",  // Сделал поле ввода немного короче
+    width: "150px",
     padding: "6px 10px",
     border: "1px solid #ccc",
-    borderRadius: "30px",  // Круглая форма поля ввода
+    borderRadius: "30px",
     boxShadow: "inset 0 1px 3px rgba(0,0,0,0.1)",
     outline: "none",
-    transition: "border-color 0.3s",  // Плавный переход для изменения рамки
-    ":focus": {
-      borderColor: "#4CAF50",  // Зеленая рамка при фокусе
-    },
   },
   addButton: {
     cursor: "pointer",
-    width: "25px",  // Сделал кнопку меньшей
-    height: "25px",  // Сделал кнопку круглой
-    borderRadius: "50%",  // Круглая кнопка
+    width: "25px",
+    height: "25px",
+    borderRadius: "50%",
     backgroundColor: "#4CAF50",
     color: "white",
     border: "none",
@@ -178,15 +168,6 @@ const styles = {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    boxShadow: "0 4px 8px rgba(0, 123, 255, 0.2)",  // Тень для кнопки
-    transition: "background-color 0.3s, transform 0.3s ease",
-    ":hover": {
-      backgroundColor: "#45a049",  // При наведении кнопка становится темнее
-      transform: "scale(1.1)",  // Кнопка немного увеличивается
-    },
-    ":active": {
-      transform: "scale(0.95)",  // При нажатии кнопка немного уменьшается
-    },
   },
   deleteButton: {
     cursor: "pointer",
@@ -201,15 +182,8 @@ const styles = {
     justifyContent: "center",
     fontSize: "14px",
     padding: 0,
-    transition: "background-color 0.3s, transform 0.3s ease",
-    ":hover": {
-      backgroundColor: "#f8d7da",  // Легкое выделение при наведении
-      transform: "scale(1.1)",  // Легкое увеличение при наведении
-    },
-    ":active": {
-      transform: "scale(0.95)",  // При нажатии кнопка немного уменьшается
-    },
   },
 };
 
 export default CategorySelector;
+

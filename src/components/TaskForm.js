@@ -1,151 +1,123 @@
-import React, { useState, useEffect } from "react";
-import { Form, Button, Modal } from "react-bootstrap";
+import React, { useState } from "react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
-import { ru } from "date-fns/locale";
+import Select from "react-select";
 
-
-function TaskForm({ show, onHide, onSave, editTask, onDelete }) {
-  const [title, setTitle] = useState("");
+const TaskForm = ({ onSubmit, onCancel, users = [], teamId, currentUser }) => {
+  const [task, setTask] = useState("");
   const [description, setDescription] = useState("");
-  const [status, setStatus] = useState("Закрытая");
-  const [startDate, setStartDate] = useState(null);
-  const [endDate, setEndDate] = useState(null);
+  const [priority, setPriority] = useState(false);
+  const [dueDate, setDueDate] = useState(null);
+  const [assignedTo, setAssignedTo] = useState(null);
+  const [dependencies, setDependencies] = useState([]); // Новое состояние для зависимостей
 
-
-  useEffect(() => {
-    if (editTask) {
-      setTitle(editTask.title || "");
-      setDescription(editTask.description || "");
-      setStatus(editTask.status || "Закрытая");
-      setStartDate(editTask.startDate ? new Date(editTask.startDate) : null);
-      setEndDate(editTask.endDate ? new Date(editTask.endDate) : null);
-    } else {
-      setTitle("");
-      setDescription("");
-      setStatus("Закрытая");
-      setStartDate(null);
-      setEndDate(null);
-    }
-  }, [editTask, show]);
-
+  const handleAddDependency = (dependencyId) => {
+    setDependencies([...dependencies, dependencyId]); // Добавление зависимости
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!title.trim()) return;
-    onSave({
-      title,
+    if (!task || !teamId || !currentUser) return;
+
+    const newTask = {
+      teamId,
+      task,
       description,
-      status,
-      startDate: startDate ? startDate.toISOString() : null,
-      endDate: endDate ? endDate.toISOString() : null,
-    });
-    onHide();
+      createdBy: currentUser.uid,
+      assignedTo: assignedTo?.value || null,
+      priority,
+      dueDate: dueDate ? dueDate.toISOString() : null,
+      status: "open",
+      dependencies, // Добавляем зависимость
+      createdAt: new Date().toISOString(),
+    };
+
+    onSubmit(newTask);
   };
 
+  const userOptions = users.map(u => ({ value: u.id, label: u.fullName || u.email }));
 
   return (
-    <Modal show={show} onHide={onHide}>
-      <Modal.Header closeButton>
-        <Modal.Title>{editTask ? "Редактировать задачу" : "Создать задачу"}</Modal.Title>
-      </Modal.Header>
-      <Modal.Body>
-        <Form onSubmit={handleSubmit}>
-          <Form.Group className="mb-3" controlId="formTitle">
-            <Form.Label>Название задачи</Form.Label>
-            <Form.Control
-              type="text"
-              placeholder="Введите название"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              required
-            />
-          </Form.Group>
+    <div style={styles.overlay}>
+      <div style={styles.modal}>
+        <h3>Создание задачи</h3>
+        <form onSubmit={handleSubmit}>
+          <input
+            type="text"
+            placeholder="Название задачи"
+            value={task}
+            onChange={(e) => setTask(e.target.value)}
+            style={styles.input}
+          />
+          <textarea
+            placeholder="Описание"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            style={styles.textarea}
+          />
 
+          <label>Крайний срок:</label>
+          <DatePicker
+            selected={dueDate}
+            onChange={(date) => setDueDate(date)}
+            showTimeSelect
+            dateFormat="Pp"
+            style={styles.datepicker}
+          />
 
-          <Form.Group className="mb-3" controlId="formDescription">
-            <Form.Label>Описание задачи</Form.Label>
-            <Form.Control
-              as="textarea"
-              rows={3}
-              placeholder="Введите описание"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-            />
-          </Form.Group>
+          <label>Назначить:</label>
+          <Select
+            options={userOptions}
+            value={assignedTo}
+            onChange={setAssignedTo}
+            isClearable
+          />
 
+          <label>
+            <input
+              type="checkbox"
+              checked={priority}
+              onChange={() => setPriority(!priority)}
+            /> Важная задача
+          </label>
 
-          <Form.Group className="mb-3" controlId="formStatus">
-            <Form.Label>Статус задачи</Form.Label>
-            <Form.Select
-              value={status}
-              onChange={(e) => setStatus(e.target.value)}
-            >
-              <option value="Закрытая">Закрытая</option>
-              <option value="Открытая">Открытая</option>
-              <option value="Завершенная">Завершенная</option>
-            </Form.Select>
-          </Form.Group>
+          <label>Зависимости:</label>
+          <input
+            type="text"
+            placeholder="Введите ID задачи, от которой зависит эта"
+            onChange={(e) => handleAddDependency(e.target.value)}
+            style={styles.input}
+          />
 
-
-          <Form.Group className="mb-3" controlId="formStartDate">
-            <Form.Label>Дата начала</Form.Label>
-            <DatePicker
-              selected={startDate}
-              onChange={(date) => setStartDate(date)}
-              dateFormat="Pp"
-              showTimeSelect
-              timeFormat="HH:mm"
-              timeIntervals={15}
-              locale={ru}
-              className="form-control"
-              placeholderText="Выберите дату начала"
-            />
-          </Form.Group>
-
-
-          <Form.Group className="mb-3" controlId="formEndDate">
-            <Form.Label>Дата окончания</Form.Label>
-            <DatePicker
-              selected={endDate}
-              onChange={(date) => setEndDate(date)}
-              dateFormat="Pp"
-              showTimeSelect
-              timeFormat="HH:mm"
-              timeIntervals={15}
-              locale={ru}
-              minDate={startDate}
-              disabled={!startDate}
-              className="form-control"
-              placeholderText="Выберите дату окончания"
-            />
-          </Form.Group>
-
-
-          <Button variant="primary" type="submit" className="me-2">
-            {editTask ? "Сохранить изменения" : "Создать задачу"}
-          </Button>
-
-
-          {editTask && editTask.status !== "Завершенная" && (
-            <Button
-              variant="outline-danger"
-              onClick={() => {
-                if (window.confirm("Удалить задачу?")) {
-                  onDelete(editTask.id);
-                  onHide();
-                }
-              }}
-            >
-              Удалить задачу
-            </Button>
-          )}
-        </Form>
-      </Modal.Body>
-    </Modal>
+          <div style={styles.actions}>
+            <button type="submit">Создать</button>
+            <button type="button" onClick={onCancel}>Отмена</button>
+          </div>
+        </form>
+      </div>
+    </div>
   );
-}
+};
 
+const styles = {
+  overlay: {
+    position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh",
+    backgroundColor: "rgba(0,0,0,0.3)", display: "flex",
+    justifyContent: "center", alignItems: "center", zIndex: 1000
+  },
+  modal: {
+    backgroundColor: "#fff", padding: "20px", borderRadius: "12px",
+    width: "400px", boxShadow: "0 8px 20px rgba(0,0,0,0.2)"
+  },
+  input: {
+    width: "100%", marginBottom: "1rem", padding: "8px", borderRadius: "8px"
+  },
+  textarea: {
+    width: "100%", height: "80px", padding: "8px", borderRadius: "8px", marginBottom: "1rem"
+  },
+  actions: {
+    display: "flex", justifyContent: "space-between", marginTop: "1rem"
+  }
+};
 
 export default TaskForm;
-

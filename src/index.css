@@ -1,3 +1,29 @@
+/* В ваш файл index.css или App.css */
+/* Добавить в глобальные стили */
+/* Для backdrop-filter в Firefox */
+@supports (backdrop-filter: blur(12px)) {
+  .task-form {
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(12px);
+  }
+}
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+body {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+body {
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+}
 /* Сброс отступов и настройка на весь экран */
 html, body, #root {
   height: 100%;
@@ -37,4 +63,13 @@ a:hover {
 
 a:active {
   color: black;
+}
+/* В глобальные стили */
+.react-datepicker {
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 4px 20px rgba(15, 23, 42, 0.05) !important;
+}
+
+.react-datepicker__header {
+  background: #f8fafc !important;
 }
